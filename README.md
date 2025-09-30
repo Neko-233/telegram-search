@@ -1,6 +1,6 @@
 ![preview](./docs/assets/preview.png)
 
-<h1 align="center">Telegram Search</h1>
+---
 
 <p align="center">
   <a href="https://trendshift.io/repositories/13868" target="_blank"><img src="https://trendshift.io/api/badge/repositories/13868" alt="groupultra%2Ftelegram-search | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
