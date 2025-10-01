@@ -32,7 +32,7 @@ export async function initPgliteDrizzleInBrowser(
     isDatabaseDebugMode?: boolean
   } = {},
 ) {
-  logger.log('Initializing database...')
+  logger.log('Initializing pglite drizzle in browser...')
 
   try {
     logger.log('Using PGlite in browser')

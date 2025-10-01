@@ -28,7 +28,7 @@ export async function initPgDrizzle(
     isDatabaseDebugMode?: boolean
   } = {},
 ) {
-  logger.log('Initializing database...')
+  logger.log('Initializing postgres drizzle...')
 
   // Initialize PostgreSQL database
   const connectionString = getDatabaseDSN(config)

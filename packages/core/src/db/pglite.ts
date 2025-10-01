@@ -33,7 +33,7 @@ export async function initPgliteDrizzleInNode(
     isDatabaseDebugMode?: boolean
   } = {},
 ) {
-  logger.log('Initializing database...')
+  logger.log('Initializing pglite drizzle...')
 
   try {
     const dbFilePath = dbPath || getDatabaseFilePath(config)

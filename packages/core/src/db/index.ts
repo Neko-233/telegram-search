@@ -25,7 +25,11 @@ export async function initDrizzle(
   logger.log('Initializing database...')
 
   // Get configuration
-  const dbType = config.database.type || DatabaseType.PGLITE
+  let dbType = config.database.type || DatabaseType.PGLITE
+  if (isBrowser()) {
+    dbType = DatabaseType.PGLITE
+  }
+
   logger.log(`Using database type: ${dbType}`)
 
   switch (dbType) {
