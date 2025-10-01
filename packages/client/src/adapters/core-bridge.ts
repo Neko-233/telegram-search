@@ -25,7 +25,10 @@ export const useCoreBridgeStore = defineStore('core-bridge', () => {
   const eventHandlersQueue: ClientEventHandlerQueueMap = new Map()
   const registerEventHandler = getRegisterEventHandler(eventHandlers, sendEvent)
 
-  function deepClone<T>(data: T): T {
+  function deepClone<T>(data?: T): T | undefined {
+    if (!data)
+      return data
+
     try {
       return JSON.parse(JSON.stringify(data)) as T
     }
