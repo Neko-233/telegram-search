@@ -1,5 +1,9 @@
 name: Release Docker / OCI
 
+permissions:
+  contents: read
+  packages: write
+
 on:
   push:
     tags:
@@ -10,9 +14,6 @@ jobs:
   ghcr_build:
     name: Release
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
 
     steps:
       - uses: actions/checkout@v5
