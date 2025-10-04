@@ -1,0 +1,14 @@
+diff --git a/dist/cli.mjs b/dist/cli.mjs
+index c3c4379db86928c3f6ce9866d34319492107450d..da1b03884a672a830a8292b6ba9a102439696a91 100644
+--- a/dist/cli.mjs
++++ b/dist/cli.mjs
+@@ -49,7 +49,8 @@ async function parseArgs() {
+         currentVersion: args.currentVersion,
+         execute: args.execute,
+         printCommits: args.printCommits,
+-        recursive: args.recursive
++        recursive: args.recursive,
++        release: args.release,
+       })
+     };
+     if (parsedArgs.options.files && parsedArgs.options.files.length > 0) {
