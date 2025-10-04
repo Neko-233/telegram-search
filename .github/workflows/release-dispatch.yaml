@@ -2,6 +2,7 @@ name: Release Manually
 
 permissions:
   contents: write
+  actions: write
 
 on:
   workflow_dispatch:
