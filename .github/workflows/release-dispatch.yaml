@@ -44,3 +44,14 @@ jobs:
       - name: Push bump commit
         run: |
           git push origin main --follow-tags
+
+      - name: Invoke Release Workflow
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: Release
+
+
+      - name: Invoke Release Docker / OCI Workflow
+        uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: Release Docker / OCI
