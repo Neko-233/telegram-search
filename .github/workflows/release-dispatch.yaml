@@ -50,7 +50,6 @@ jobs:
         with:
           workflow: Release
 
-
       - name: Invoke Release Docker / OCI Workflow
         uses: benc-uk/workflow-dispatch@v1
         with:
