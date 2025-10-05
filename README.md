@@ -79,6 +79,8 @@ Set the following environment variables before starting the containerized servic
 
 The following environment variables can only take effect at compile time (not at `docker run` time):
 
+| Variable | Required | Description |
+| --- | --- | --- |
 | `VITE_PREVIEW_ALLOW_ALL_HOSTS` | optional (`true`) | Allow all hosts to access preview page. (#371) |
 | `VITE_DISABLE_SETTINGS` | optional (`true`) | Disable settings page. |
 

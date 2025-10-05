@@ -80,6 +80,8 @@ docker run -d --name telegram-search \
 
 以下环境变量只能在编译时生效（不能在 `docker run` 时生效）：
 
+| 变量 | 是否必填 | 说明 |
+| --- | --- | --- |
 | `VITE_PREVIEW_ALLOW_ALL_HOSTS` | 选填 (`true`) | 允许所有主机访问预览页面。(#371) |
 | `VITE_DISABLE_SETTINGS` | 选填 (`true`) | 禁用设置页面。 |
 

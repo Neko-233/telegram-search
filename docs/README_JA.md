@@ -80,6 +80,8 @@ docker run -d --name telegram-search \
 
 以下の環境変数はコンパイル時にのみ有効です（`docker run` 時には無効です）：
 
+| 変数 | 必須 | 説明 |
+| --- | --- | --- |
 | `VITE_PREVIEW_ALLOW_ALL_HOSTS` | 任意 (`true`) | プレビュー ページへのすべてのホストのアクセスを許可します。(#371) |
 | `VITE_DISABLE_SETTINGS` | 任意 (`true`) | 設定ページを無効化。 |
 
