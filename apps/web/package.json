@@ -19,6 +19,7 @@
     "@vueuse/core": "^13.9.0",
     "defu": "^6.1.4",
     "lottie-web": "^5.13.0",
+    "nanoid": "^5.1.6",
     "pinia": "^3.0.3",
     "telegram": "2.26.21",
     "vue": "^3.5.22",
@@ -38,8 +39,10 @@
     "unplugin-vue-macros": "^2.14.5",
     "unplugin-vue-router": "^0.15.0",
     "vite-plugin-inspect": "^11.3.3",
+    "vite-plugin-pwa": "^1.0.3",
     "vite-plugin-vue-devtools": "^8.0.2",
     "vite-plugin-vue-layouts": "^0.11.0",
-    "vue-tsc": "^3.0.8"
+    "vue-tsc": "^3.0.8",
+    "workbox-window": "^7.3.0"
   }
 }
