@@ -3,9 +3,9 @@ import type { Api } from 'telegram'
 import type { CoreContext } from '../context'
 import type { MessageResolverRegistryFn } from '../message-resolvers'
 
+import { useConfig } from '@tg-search/common'
 import { useLogger } from '@unbird/logg'
 
-import { useConfig } from '../../../common/src/config'
 import { convertToCoreMessage } from '../utils/message'
 
 export interface MessageResolverEventToCore {
