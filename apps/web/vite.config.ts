@@ -4,6 +4,7 @@ import { env } from 'node:process'
 import DrizzleORMMigrations from '@proj-airi/unplugin-drizzle-orm-migrations/vite'
 import Vue from '@vitejs/plugin-vue'
 import UnoCSS from 'unocss/vite'
+import Info from 'unplugin-info/vite'
 import Unused from 'unplugin-unused/vite'
 import VueMacros from 'unplugin-vue-macros/vite'
 import VueRouter from 'unplugin-vue-router/vite'
@@ -14,6 +15,10 @@ import Layouts from 'vite-plugin-vue-layouts'
 
 export default defineConfig({
   plugins: [
+    Info({
+      root: resolve(import.meta.dirname, '../..'),
+    }),
+
     Inspect(),
 
     Unused({
@@ -99,6 +104,6 @@ export default defineConfig({
 
   // Allow all hosts in preview mode for reverse proxy deployments by setting VITE_PREVIEW_ALLOW_ALL_HOSTS=true
   preview: {
-    allowedHosts: env.VITE_PREVIEW_ALLOW_ALL_HOSTS === 'true',
+    allowedHosts: env.VITE_PREVIEW_ALLOW_ALL_HOSTS === 'true' ? true : [],
   },
 })
