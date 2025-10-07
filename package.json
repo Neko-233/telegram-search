@@ -5,7 +5,7 @@
   "private": true,
   "packageManager": "pnpm@10.17.1",
   "engines": {
-    "node": ">=22.20.0"
+    "node": ">=24.0.0"
   },
   "scripts": {
     "start": "concurrently \"pnpm run server:dev\" \"pnpm run web:preview --host 0.0.0.0\"",

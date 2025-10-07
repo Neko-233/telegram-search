@@ -1,7 +1,7 @@
 # ---------------------------------
 # --------- Builder Stage ---------
 # ---------------------------------
-FROM node:alpine3.21 AS builder
+FROM node:24-alpine AS builder
 
 RUN apk add --no-cache git
 
@@ -24,9 +24,9 @@ RUN pnpm run web:build
 # ---------------------------------
 # --------- Runtime Stage ---------
 # ---------------------------------
-FROM alpine:latest
+FROM node:24-alpine
 
-RUN apk add --no-cache nodejs pnpm curl
+RUN apk add --no-cache curl && corepack enable && corepack prepare pnpm@latest --activate
 
 WORKDIR /app
 
