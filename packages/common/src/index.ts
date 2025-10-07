@@ -1,5 +1,6 @@
 export * from './config'
 export * from './config-schema'
 export * from './flags'
+export * from './node/path'
 export * from './pagination'
 export * from './retry'
