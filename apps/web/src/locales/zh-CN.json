@@ -38,7 +38,7 @@
     "password": "两步验证密码",
     "passwordDescription": "请输入您的两步验证密码",
     "phone": "手机号",
-    "phoneDescription": "请输入您的手机号码",
+    "phoneDescription": "请输入您的手机号码 (请在电话号码前加上国家代码)",
     "phoneNumber": "手机号码",
     "phoneNumberPlaceholder": "请输入手机号码",
     "processing": "处理中...",

@@ -38,7 +38,7 @@
     "password": "Two-factor Password",
     "passwordDescription": "Please enter your two-factor authentication password",
     "phone": "Phone",
-    "phoneDescription": "Please enter your phone number",
+    "phoneDescription": "Please enter your phone number (Remember to add the country code before the phone number)",
     "phoneNumber": "Phone Number",
     "phoneNumberPlaceholder": "Enter your phone number",
     "processing": "Processing...",
