@@ -17,7 +17,6 @@ const showDialog = defineModel<boolean>('showDialog', { required: true })
 
 const sessionStore = useAuthStore()
 const { isLoggedIn } = storeToRefs(sessionStore)
-const { logout } = sessionStore.handleAuth()
 
 const settingsStore = useSettingsStore()
 const { useCachedMessage, debugMode, language } = storeToRefs(settingsStore)
@@ -34,7 +33,7 @@ watch(language, (newValue: string) => {
 }, { immediate: true })
 
 function handleLogout() {
-  logout()
+  sessionStore.handleAuth().logout()
 }
 
 function handleLogin() {
