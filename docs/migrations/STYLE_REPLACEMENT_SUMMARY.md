@@ -117,7 +117,7 @@ const themeColorsHueDynamic = useLocalStorage('settings/theme/colors/hue-dynamic
 
 建议在替换完成后进行以下测试：
 
-1. **基础UI测试**: 确保所有页面正常显示，颜色符合预期
+1. **基础 UI 测试**: 确保所有页面正常显示，颜色符合预期
 2. **深色模式测试**: 验证深色模式下的颜色表现
 3. **交互状态测试**: 确保悬停、焦点等状态的颜色正确
 4. **动态主题测试**: 验证主题色相调整功能正常工作
@@ -152,4 +152,4 @@ const themeColorsHueDynamic = useLocalStorage('settings/theme/colors/hue-dynamic
 
 ---
 
-*替换完成时间: 2025年1月*
+*替换完成时间：2025 年 1 月*

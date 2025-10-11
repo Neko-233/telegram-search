@@ -76,7 +76,7 @@ docker run -d --name telegram-search \
 | `EMBEDDING_PROVIDER` | 任意 | 埋め込みプロバイダーを上書き（`openai` または `ollama`）。 |
 | `EMBEDDING_MODEL` | 任意 | 使用する埋め込みモデル名を上書き。 |
 | `EMBEDDING_DIMENSION` | 任意 | 埋め込みベクトルの次元数を上書き（`1536`、`1024`、`768` など）。 |
-| `PROXY_URL` | 任意 | プロキシ設定URL（例：`socks5://user:pass@host:port`）。(#366) |
+| `PROXY_URL` | 任意 | プロキシ設定 URL（例：`socks5://user:pass@host:port`）。(#366) |
 
 以下の環境変数はコンパイル時にのみ有効です（`docker run` 時には無効です）：
 
@@ -85,7 +85,7 @@ docker run -d --name telegram-search \
 | `VITE_PREVIEW_ALLOW_ALL_HOSTS` | 任意 (`true`) | プレビュー ページへのすべてのホストのアクセスを許可します。(#371) |
 | `VITE_DISABLE_SETTINGS` | 任意 (`true`) | 設定ページを無効化。 |
 
-### プロキシURL形式
+### プロキシ URL 形式
 
 `PROXY_URL` 環境変数は以下の形式をサポートします：
 

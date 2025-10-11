@@ -37,7 +37,7 @@
 > [!NOTE]
 > 我们承诺不会收集任何用户隐私数据，您可以放心使用
 
-访问以下网址开始使用: https://search.lingogram.app
+访问以下网址开始使用：https://search.lingogram.app
 
 ## 🚀 快速开始
 
