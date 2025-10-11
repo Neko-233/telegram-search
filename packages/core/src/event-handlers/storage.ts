@@ -1,11 +1,19 @@
 import type { CoreContext } from '../context'
 import type { DBRetrievalMessages } from '../models'
 import type { CoreDialog } from '../services'
+import type { CoreMessage } from '../utils/message'
 
 import { useLogger } from '@unbird/logg'
 
 import { convertToCoreRetrievalMessages, fetchChats, fetchMessageContextWithPhotos, fetchMessagesWithPhotos, getChatMessagesStats, recordChats, recordMessagesWithMedia, retrieveMessages } from '../models'
 import { embedContents } from '../utils/embed'
+
+/**
+ * Check if a message has no media attached
+ */
+function hasNoMedia(message: CoreMessage): boolean {
+  return !message.media || message.media.length === 0
+}
 
 export function registerStorageEventHandlers(ctx: CoreContext) {
   const { emitter } = ctx
@@ -26,6 +34,26 @@ export function registerStorageEventHandlers(ctx: CoreContext) {
     const messages = (await fetchMessageContextWithPhotos({ chatId, messageId, before: safeBefore, after: safeAfter })).unwrap()
 
     emitter.emit('storage:messages:context', { chatId, messageId, messages })
+
+    // After emitting the initial messages, identify messages that might be missing media
+    // and trigger a fetch from Telegram to download them
+    // We only fetch messages that have no media in the database, as media is optional
+    // The media resolver will check if media already exists before downloading
+    const messageIdsToFetch = messages
+      .filter(hasNoMedia)
+      .map(m => Number.parseInt(m.platformMessageId))
+      .filter(id => !Number.isNaN(id))
+
+    if (messageIdsToFetch.length > 0) {
+      logger.withFields({ messageIds: messageIdsToFetch.length }).verbose('Fetching messages from Telegram to check for missing media')
+
+      // Fetch these specific messages from Telegram which will download any missing media
+      // This is done asynchronously and will update the messages once media is downloaded
+      emitter.emit('message:fetch:specific', {
+        chatId,
+        messageIds: messageIdsToFetch,
+      })
+    }
   })
 
   emitter.on('storage:record:messages', async ({ messages }) => {
