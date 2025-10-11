@@ -2,11 +2,13 @@
   // Disable the default formatter, use eslint instead
   "prettier.enable": false,
   "editor.formatOnSave": false,
+
   // Auto fix
   "editor.codeActionsOnSave": {
     "source.fixAll.eslint": "explicit",
     "source.organizeImports": "never"
   },
+
   // Silent the stylistic rules in you IDE, but still auto fix them
   "eslint.rules.customizations": [
     {
@@ -60,6 +62,7 @@
       "fixable": true
     }
   ],
+
   // Enable eslint for all supported languages
   "eslint.validate": [
     "javascript",
@@ -85,6 +88,7 @@
     "pcss",
     "postcss"
   ],
+
   // i18n-ally
   "i18n-ally.localesPaths": [
     "app/web/src/locales"
