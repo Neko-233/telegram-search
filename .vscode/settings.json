@@ -87,7 +87,7 @@
   ],
   // i18n-ally
   "i18n-ally.localesPaths": [
-    "packages/stage-ui/src/locales"
+    "app/web/src/locales"
   ],
   "i18n-ally.enabledFrameworks": [
     "vue"
