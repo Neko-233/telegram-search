@@ -1,6 +1,6 @@
 import type { CoreUserEntity } from '@tg-search/core'
 
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref, watch } from 'vue'
 
 import { useBridgeStore } from '../composables/useBridge'
@@ -85,3 +85,7 @@ export const useAuthStore = defineStore('session', () => {
     isLoggedIn: isLoggedInComputed,
   }
 })
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useAuthStore, import.meta.hot))
+}

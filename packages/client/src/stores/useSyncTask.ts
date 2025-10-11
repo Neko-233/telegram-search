@@ -1,6 +1,6 @@
 import type { CoreTask } from '@tg-search/core'
 
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 export const useSyncTaskStore = defineStore('sync-task', () => {
@@ -19,3 +19,7 @@ export const useSyncTaskStore = defineStore('sync-task', () => {
     increase,
   }
 })
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useSyncTaskStore, import.meta.hot))
+}

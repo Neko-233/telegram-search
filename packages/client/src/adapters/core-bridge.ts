@@ -9,8 +9,9 @@ import { createCoreInstance, initDrizzle } from '@tg-search/core'
 import { initLogger, LoggerLevel, useLogger } from '@unbird/logg'
 import { useLocalStorage } from '@vueuse/core'
 import defu from 'defu'
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
+import { ref } from 'vue'
 
 import { getRegisterEventHandler, registerAllEventHandlers } from '../event-handlers'
 
@@ -24,6 +25,7 @@ export const useCoreBridgeStore = defineStore('core-bridge', () => {
   const eventHandlers: ClientEventHandlerMap = new Map()
   const eventHandlersQueue: ClientEventHandlerQueueMap = new Map()
   const registerEventHandler = getRegisterEventHandler(eventHandlers, sendEvent)
+  const isInitialized = ref(false)
 
   function deepClone<T>(data?: T): T | undefined {
     if (!data)
@@ -44,15 +46,21 @@ export const useCoreBridgeStore = defineStore('core-bridge', () => {
       const isDebug = !!import.meta.env.VITE_DEBUG
       initLogger(isDebug ? LoggerLevel.Debug : LoggerLevel.Verbose)
 
-      const config = useConfig()
-      config.api.telegram.apiId ||= import.meta.env.VITE_TELEGRAM_APP_ID
-      config.api.telegram.apiHash ||= import.meta.env.VITE_TELEGRAM_APP_HASH
+      try {
+        const config = useConfig()
+        config.api.telegram.apiId ||= import.meta.env.VITE_TELEGRAM_APP_ID
+        config.api.telegram.apiHash ||= import.meta.env.VITE_TELEGRAM_APP_HASH
 
-      ctx = createCoreInstance(config)
-      initDrizzle(logger, config, {
-        debuggerWebSocketUrl: import.meta.env.VITE_DB_DEBUGGER_WS_URL as string,
-        isDatabaseDebugMode: import.meta.env.VITE_DB_DEBUG === 'true',
-      })
+        ctx = createCoreInstance(config)
+        initDrizzle(logger, config, {
+          debuggerWebSocketUrl: import.meta.env.VITE_DB_DEBUGGER_WS_URL as string,
+          isDatabaseDebugMode: import.meta.env.VITE_DB_DEBUG === 'true',
+        })
+      }
+      catch (error) {
+        console.error(error)
+        initConfig()
+      }
     }
 
     return ctx
@@ -106,9 +114,15 @@ export const useCoreBridgeStore = defineStore('core-bridge', () => {
   }
 
   function init() {
+    if (isInitialized.value) {
+      logger.debug('Core bridge already initialized, skipping')
+      return
+    }
+
     initConfig().then(() => {
       registerAllEventHandlers(registerEventHandler)
       sendWsEvent({ type: 'server:connected', data: { sessionId: storageActiveSessionId.value, connected: false } })
+      isInitialized.value = true
     })
   }
 
@@ -170,3 +184,7 @@ export const useCoreBridgeStore = defineStore('core-bridge', () => {
     waitForEvent,
   }
 })
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useCoreBridgeStore, import.meta.hot))
+}

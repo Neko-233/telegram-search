@@ -7,7 +7,7 @@ import { generateDefaultConfig } from '@tg-search/common'
 import { useLocalStorage } from '@vueuse/core'
 import { converter } from 'culori'
 import { defu } from 'defu'
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref } from 'vue'
 
 export const DEFAULT_THEME_COLORS_HUE = 220.44
@@ -33,6 +33,8 @@ export const useSettingsStore = defineStore('settings', () => {
 
   // Language settings
   const language = useLocalStorage<string>('settings/language', 'en')
+
+  const isInitialized = ref(false)
 
   function setThemeColorsHue(hue = DEFAULT_THEME_COLORS_HUE) {
     themeColorsHue.value = hue
@@ -64,8 +66,13 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function init() {
+    if (isInitialized.value) {
+      return
+    }
+
     // Merge with default config
     storageConfig.value = defu({}, storageConfig.value, generateDefaultConfig())
+    isInitialized.value = true
   }
 
   return {
@@ -83,3 +90,7 @@ export const useSettingsStore = defineStore('settings', () => {
     language,
   }
 })
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useSettingsStore, import.meta.hot))
+}

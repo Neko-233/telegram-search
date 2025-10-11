@@ -1,6 +1,6 @@
 import type { CoreDialog } from '@tg-search/core'
 
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { ref } from 'vue'
 
 import { useBridgeStore } from '../composables/useBridge'
@@ -28,3 +28,7 @@ export const useChatStore = defineStore('chat', () => {
     chats,
   }
 })
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useChatStore, import.meta.hot))
+}

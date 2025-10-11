@@ -5,7 +5,7 @@ import type { SessionContext } from '../stores/useAuth'
 
 import { useLocalStorage, useWebSocket } from '@vueuse/core'
 import { defu } from 'defu'
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
 import { computed, ref, watch } from 'vue'
 
@@ -64,9 +64,17 @@ export const useWebsocketStore = defineStore('websocket', () => {
   const eventHandlers: ClientEventHandlerMap = new Map()
   const eventHandlersQueue: ClientEventHandlerQueueMap = new Map()
   const registerEventHandler = getRegisterEventHandler(eventHandlers, sendEvent)
+  const isInitialized = ref(false)
 
   function init() {
+    if (isInitialized.value) {
+      // eslint-disable-next-line no-console
+      console.log('[WebSocket] Already initialized, skipping')
+      return
+    }
+
     registerAllEventHandlers(registerEventHandler)
+    isInitialized.value = true
   }
 
   function waitForEvent<T extends keyof WsEventToClient>(event: T) {
@@ -142,3 +150,7 @@ export const useWebsocketStore = defineStore('websocket', () => {
     waitForEvent,
   }
 })
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(useWebsocketStore, import.meta.hot))
+}

@@ -2,7 +2,7 @@
 
 import { breakpointsTailwind, useBreakpoints } from '@vueuse/core'
 import { nanoid } from 'nanoid'
-import { defineStore } from 'pinia'
+import { acceptHMRUpdate, defineStore } from 'pinia'
 import { h, markRaw, ref } from 'vue'
 import { toast } from 'vue-sonner'
 
@@ -12,9 +12,16 @@ export const usePWAStore = defineStore('pwa', () => {
   const updateReadyHooks = ref<(() => void)[]>([])
   const breakpoints = useBreakpoints(breakpointsTailwind)
   const isMobile = breakpoints.smaller('md')
+  const isInitialized = ref(false)
 
   async function init() {
     if (import.meta.env.SSR) {
+      return
+    }
+
+    if (isInitialized.value) {
+      // eslint-disable-next-line no-console
+      console.log('[PWA] Already initialized, skipping')
       return
     }
 
@@ -32,9 +39,14 @@ export const usePWAStore = defineStore('pwa', () => {
     })
 
     updateReadyHooks.value.push(updateSW)
+    isInitialized.value = true
   }
 
   return {
     init,
   }
 })
+
+if (import.meta.hot) {
+  import.meta.hot.accept(acceptHMRUpdate(usePWAStore, import.meta.hot))
+}
