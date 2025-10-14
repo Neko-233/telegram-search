@@ -7,6 +7,7 @@ import { abbreviatedSha as gitShortSha } from '~build/git'
 import { version as pkgVersion } from '~build/package'
 import buildTime from '~build/time'
 import { storeToRefs } from 'pinia'
+import { VList } from 'virtua/vue'
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute, useRouter } from 'vue-router'
@@ -69,6 +70,11 @@ const activeChatGroup = computed(() => {
     }
   }
   return selectedGroup.value
+})
+
+// Filtered chats by active group
+const activeGroupChats = computed(() => {
+  return chatsFiltered.value.filter(chat => chat.type === activeChatGroup.value)
 })
 
 // Computed classes for responsive design
@@ -229,28 +235,34 @@ function handleAvatarClick() {
         </div>
 
         <!-- Chat list -->
-        <div class="flex-1 overflow-y-auto py-2 scrollbar scrollbar-rounded scrollbar-w-6px">
-          <div
-            v-for="chat in chatsFiltered.filter(chat => chat.type === activeChatGroup)"
-            :key="chat.id"
-            :class="{ 'bg-accent text-accent-foreground': route.params.chatId === chat.id.toString() }"
-            class="mx-2 my-0.5 flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 transition-colors hover:bg-accent hover:text-accent-foreground"
-            @click="router.push(`/chat/${chat.id}`)"
+        <div class="min-h-0 flex-1 overflow-hidden">
+          <VList
+            :data="activeGroupChats"
+            class="h-full py-2 scrollbar scrollbar-rounded scrollbar-w-6px"
           >
-            <Avatar
-              :name="chat.name"
-              size="sm"
-              class="flex-shrink-0"
-            />
-            <div class="min-w-0 flex flex-1 flex-col">
-              <span class="truncate text-sm font-medium">
-                {{ chat.name }}
-              </span>
-              <span class="truncate text-xs text-muted-foreground">
-                {{ chat.id }}
-              </span>
-            </div>
-          </div>
+            <template #default="{ item: chat }">
+              <div
+                :key="chat.id"
+                :class="{ 'bg-accent text-accent-foreground': route.params.chatId === chat.id.toString() }"
+                class="mx-2 my-0.5 flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 transition-colors hover:bg-accent hover:text-accent-foreground"
+                @click="router.push(`/chat/${chat.id}`)"
+              >
+                <Avatar
+                  :name="chat.name"
+                  size="sm"
+                  class="flex-shrink-0"
+                />
+                <div class="min-w-0 flex flex-1 flex-col">
+                  <span class="truncate text-sm font-medium">
+                    {{ chat.name }}
+                  </span>
+                  <span class="truncate text-xs text-muted-foreground">
+                    {{ chat.id }}
+                  </span>
+                </div>
+              </div>
+            </template>
+          </VList>
         </div>
       </div>
 
