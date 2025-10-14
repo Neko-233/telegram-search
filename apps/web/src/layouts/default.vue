@@ -11,7 +11,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 
-import SettingsDialog from '../components/layout/SettingsDialog.vue'
+import LanguageSelector from '../components/layout/LanguageSelector.vue'
 import SidebarSelector from '../components/layout/SidebarSelector.vue'
 import Avatar from '../components/ui/Avatar.vue'
 import { Button } from '../components/ui/Button'
@@ -26,7 +26,6 @@ const router = useRouter()
 
 const { t } = useI18n()
 
-const settingsDialog = ref(false)
 const searchParams = ref('')
 
 // --- Build info using unplugin-info ---
@@ -101,10 +100,6 @@ watch(route, () => {
   }
 })
 
-function toggleSettingsDialog() {
-  settingsDialog.value = !settingsDialog.value
-}
-
 function toggleActiveChatGroup(group: ChatGroup) {
   selectedGroup.value = group
 }
@@ -118,6 +113,12 @@ function toggleSidebar() {
 function closeMobileDrawer() {
   if (isMobile.value) {
     mobileDrawerOpen.value = false
+  }
+}
+
+function handleAvatarClick() {
+  if (!websocketStore.getActiveSession()?.isConnected) {
+    router.push('/login')
   }
 }
 </script>
@@ -254,9 +255,13 @@ function closeMobileDrawer() {
       </div>
 
       <!-- User profile section -->
-      <div class="flex flex-col gap-3 border-t p-3">
+      <div class="border-t p-3">
         <div class="flex items-center justify-between gap-2">
-          <div class="min-w-0 flex flex-1 items-center gap-2.5">
+          <div
+            class="min-w-0 flex flex-1 cursor-pointer items-center gap-2.5 transition-opacity hover:opacity-80"
+            :class="{ 'cursor-pointer': !websocketStore.getActiveSession()?.isConnected }"
+            @click="handleAvatarClick"
+          >
             <div class="h-8 w-8 flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
               <Avatar
                 :name="websocketStore.getActiveSession()?.me?.name"
@@ -280,38 +285,28 @@ function closeMobileDrawer() {
               @click="() => { isDark = !isDark }"
             />
 
-            <Button
-              icon="i-lucide-settings"
-              class="h-8 w-8 rounded-md p-0"
-              variant="ghost"
-              size="sm"
-              :title="t('settings.settings')"
-              @click="toggleSettingsDialog"
-            />
+            <LanguageSelector />
           </div>
-        </div>
-
-        <div class="flex items-center justify-between text-xs text-muted-foreground">
-          <span class="truncate">{{ buildVersionLabel }}</span>
-          <span
-            v-if="buildTimeLabel"
-            class="truncate"
-          >{{ buildTimeLabel }}</span>
         </div>
       </div>
     </div>
 
     <!-- Main content -->
     <div
-      class="flex flex-1 flex-col overflow-auto bg-background"
+      class="relative flex flex-1 flex-col overflow-auto bg-background"
       :class="{ 'ml-0': isMobile }"
     >
       <RouterView :key="$route.fullPath" />
-    </div>
 
-    <SettingsDialog
-      v-model:show-dialog="settingsDialog"
-    />
+      <!-- Version info -->
+      <div class="pointer-events-none fixed bottom-3 right-3 z-10 flex items-center gap-2 text-xs text-muted-foreground opacity-50">
+        <span class="truncate">{{ buildVersionLabel }}</span>
+        <span
+          v-if="buildTimeLabel"
+          class="truncate"
+        >{{ buildTimeLabel }}</span>
+      </div>
+    </div>
   </div>
 </template>
 
