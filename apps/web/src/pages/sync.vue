@@ -143,20 +143,35 @@ watch(currentTaskProgress, (progress) => {
 
   <div v-else class="p-6 space-y-6">
     <!-- Progress bar -->
-    <div v-if="isTaskInProgress" class="space-y-3">
-      <Progress
-        :progress="currentTaskProgress"
-        :label="t('sync.syncing')"
-        :message="currentTask?.lastMessage"
-      />
-      <div class="flex justify-end">
-        <Button
-          icon="i-lucide-x"
-          size="sm"
-          @click="handleAbort"
-        >
-          {{ t('sync.cancel') }}
-        </Button>
+    <div
+      v-if="isTaskInProgress"
+      class="border border-primary/20 rounded-xl bg-primary/5 p-6 transition-all dark:border-primary/30 dark:bg-primary/10"
+    >
+      <div class="space-y-4">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 flex flex-shrink-0 items-center justify-center rounded-lg bg-primary/10 dark:bg-primary/20">
+            <div class="i-lucide-loader-2 h-5 w-5 animate-spin text-primary" />
+          </div>
+          <div class="flex flex-1 flex-col gap-1">
+            <span class="text-sm text-foreground font-medium">{{ t('sync.syncing') }}</span>
+            <span v-if="currentTask?.lastMessage" class="text-xs text-muted-foreground">{{ currentTask.lastMessage }}</span>
+          </div>
+        </div>
+
+        <Progress
+          :progress="currentTaskProgress"
+        />
+
+        <div class="flex justify-end">
+          <Button
+            icon="i-lucide-x"
+            size="sm"
+            variant="outline"
+            @click="handleAbort"
+          >
+            {{ t('sync.cancel') }}
+          </Button>
+        </div>
       </div>
     </div>
 
