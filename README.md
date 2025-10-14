@@ -61,8 +61,7 @@ docker run -d --name telegram-search \
   ghcr.io/groupultra/telegram-search:latest
 ```
 
-<details>
-<summary>Example with environment variables</summary>
+#### Example with environment variables
 
 Set the following environment variables before starting the containerized services:
 
@@ -114,8 +113,6 @@ docker run -d --name telegram-search \
 ```
 
 Replace `<postgres-host>` with the hostname or IP address of the PostgreSQL instance you want to use.
-
-</details>
 
 2. Access `http://localhost:3333` to open the search interface.
 

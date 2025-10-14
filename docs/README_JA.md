@@ -62,8 +62,7 @@ docker run -d --name telegram-search \
   ghcr.io/groupultra/telegram-search:latest
 ```
 
-<details>
-<summary>環境変数ありの例</summary>
+#### 環境変数ありの例
 
 コンテナを起動する前に、以下の環境変数を設定してください。
 
@@ -115,8 +114,6 @@ docker run -d --name telegram-search \
 ```
 
 `<postgres-host>` には利用したい PostgreSQL のホスト名または IP アドレスを指定してください。
-
-</details>
 
 2. http://localhost:3333 にアクセスして検索インターフェースを開きます。
 

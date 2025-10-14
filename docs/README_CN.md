@@ -62,8 +62,7 @@ docker run -d --name telegram-search \
   ghcr.io/groupultra/telegram-search:latest
 ```
 
-<details>
-<summary>带环境变量的示例</summary>
+#### 带环境变量的示例
 
 启动容器前请准备以下环境变量：
 
@@ -115,8 +114,6 @@ docker run -d --name telegram-search \
 ```
 
 请将 `<postgres-host>` 替换为实际的 PostgreSQL 主机名或 IP 地址。
-
-</details>
 
 2. 浏览器访问 `http://localhost:3333` 打开搜索界面。
 
