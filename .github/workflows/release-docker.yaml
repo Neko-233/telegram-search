@@ -51,8 +51,18 @@ jobs:
       - name: Create image tags
         id: image_tag
         run: |
-          echo "tag_latest=ghcr.io/${{ github.repository }}:latest" >> $GITHUB_OUTPUT
-          echo "tag=ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}" >> $GITHUB_OUTPUT
+          IMAGE_VERSION="${{ steps.version.outputs.version }}"
+          IMAGE_REPO="ghcr.io/${{ github.repository }}"
+          if [[ "$IMAGE_VERSION" == *beta* ]]; then
+            echo "tags<<EOF" >> $GITHUB_OUTPUT
+            echo "$IMAGE_REPO:$IMAGE_VERSION" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          else
+            echo "tags<<EOF" >> $GITHUB_OUTPUT
+            echo "$IMAGE_REPO:$IMAGE_VERSION" >> $GITHUB_OUTPUT
+            echo "$IMAGE_REPO:latest" >> $GITHUB_OUTPUT
+            echo "EOF" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build and Push
         uses: docker/build-push-action@v6
@@ -63,6 +73,4 @@ jobs:
           platforms: linux/amd64,linux/arm64,linux/arm64/v8
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          tags: |
-            ${{ steps.image_tag.outputs.tag_latest }}
-            ${{ steps.image_tag.outputs.tag }}
+          tags: ${{ steps.image_tag.outputs.tags }}
