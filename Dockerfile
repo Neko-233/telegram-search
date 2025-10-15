@@ -41,7 +41,7 @@ COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
 # Copy nginx config
 COPY nginx.conf /etc/nginx/nginx.conf
 
-EXPOSE 80
+EXPOSE 3333
 
 # ---------------------------------
 # --------- Runtime Stage ---------

@@ -21,7 +21,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - 3333:80 # Frontend (Nginx)
+      - 3333:3333
     depends_on:
       pgvector:
         condition: service_healthy
