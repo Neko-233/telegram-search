@@ -23,6 +23,13 @@
     "type": "类型",
     "user": "用户"
   },
+  "countryCodeSelector": {
+    "customDialCode": "自定义区号",
+    "customDialCodePlaceholder": "例如：86",
+    "noResults": "未找到匹配的国家或地区",
+    "searchPlaceholder": "搜索国家或地区...",
+    "use": "使用"
+  },
   "home": {
     "home": "主页"
   },
@@ -38,9 +45,10 @@
     "password": "两步验证密码",
     "passwordDescription": "请输入您的两步验证密码",
     "phone": "手机号",
-    "phoneDescription": "请输入您的手机号码 (请在电话号码前加上国家代码)",
+    "phoneDescription": "请输入您的手机号码",
     "phoneNumber": "手机号码",
     "phoneNumberPlaceholder": "请输入手机号码",
+    "phoneValidationError": "请输入正确的手机号码",
     "processing": "处理中...",
     "telegramLogin": "Telegram 登录",
     "twoFactorPassword": "两步验证密码",
@@ -120,8 +128,24 @@
     "startSyncPrompt": "首次同步需要在 Telegram 客户端中授权 Data Export 数据导出，并且刷新页面之后再尝试一次。",
     "sync": "同步",
     "syncCompleted": "同步完成",
+    "chatCompleted": "聊天同步完成",
+    "allChatsCompleted": "所有聊天同步完成",
     "syncPrompt": "同步对话之后才能搜索全部的聊天记录",
-    "syncing": "同步中..."
+    "syncing": "同步中...",
+    "initTakeoutSession": "初始化导出会话",
+    "getMessages": "获取消息中",
+    "processedMessages": "已处理 {processed}/{total} 条消息",
+    "startingIncrementalSync": "开始增量同步",
+    "incrementalSyncCompleted": "增量同步完成",
+    "taskAborted": "任务已取消",
+    "queueStatus": "同步队列状态",
+    "queueProgress": "进度：{current}/{total}",
+    "currentlySyncing": "正在同步",
+    "waiting": "等待中",
+    "completed": "已完成",
+    "queuePosition": "第 {position} 位",
+    "preparing": "准备中",
+    "noMore": "无更多"
   },
   "virtualMessageList": {
     "scrolling": "滚动中..."

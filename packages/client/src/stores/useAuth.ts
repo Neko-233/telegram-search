@@ -8,6 +8,10 @@ import { useChatStore } from './useChat'
 
 export interface SessionContext {
   phoneNumber?: string
+  /** 纯手机号（不包含国家区号） */
+  purePhoneNumber?: string
+  /** 国家区号代码 */
+  countryCode?: string
   isConnected?: boolean
   me?: CoreUserEntity
 }
@@ -42,8 +46,11 @@ export const useAuthStore = defineStore('session', () => {
     function login(phoneNumber: string) {
       const session = websocketStore.sessions.get(websocketStore.activeSessionId)
 
-      if (session)
+      if (session) {
         session!.phoneNumber = phoneNumber
+        // 如果会话中已有分离的国家区号和纯手机号，保持它们
+        // 这些值应该在登录页面中已经设置好了
+      }
 
       websocketStore.sendEvent('auth:login', {
         phoneNumber,

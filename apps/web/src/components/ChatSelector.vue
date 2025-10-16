@@ -17,7 +17,10 @@ const selectedChats = defineModel<number[]>('selectedChats', {
   required: true,
 })
 
-const chatTypeOptions = ref([
+/**
+ * 聊天类型选项的计算属性，响应语言切换
+ */
+const chatTypeOptions = computed(() => [
   { label: t('chatSelector.user'), value: 'user' },
   { label: t('chatSelector.group'), value: 'group' },
   { label: t('chatSelector.channel'), value: 'channel' },

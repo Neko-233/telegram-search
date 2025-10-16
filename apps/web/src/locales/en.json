@@ -23,6 +23,13 @@
     "type": "Type",
     "user": "User"
   },
+  "countryCodeSelector": {
+    "customDialCode": "Custom Dial Code",
+    "customDialCodePlaceholder": "e.g.: 86",
+    "noResults": "No matching countries or regions found",
+    "searchPlaceholder": "Search countries or regions...",
+    "use": "Use"
+  },
   "home": {
     "home": "Home"
   },
@@ -38,9 +45,10 @@
     "password": "Two-factor Password",
     "passwordDescription": "Please enter your two-factor authentication password",
     "phone": "Phone",
-    "phoneDescription": "Please enter your phone number (Remember to add the country code before the phone number)",
+    "phoneDescription": "Please enter your phone number",
     "phoneNumber": "Phone Number",
     "phoneNumberPlaceholder": "Enter your phone number",
+    "phoneValidationError": "Please enter a valid phone number",
     "processing": "Processing...",
     "telegramLogin": "Telegram Login",
     "twoFactorPassword": "Two-factor Password",
@@ -120,8 +128,24 @@
     "startSyncPrompt": "The first synchronization requires authorization of Data Export in the Telegram client, and then refresh the page and try again.",
     "sync": "Sync",
     "syncCompleted": "Sync completed",
+    "chatCompleted": "Chat sync completed",
+    "allChatsCompleted": "All chats sync completed",
     "syncPrompt": "After a synchronized conversation, you can search all chat records.",
-    "syncing": "Syncing..."
+    "syncing": "Syncing...",
+    "initTakeoutSession": "Init takeout session",
+    "getMessages": "Get messages",
+    "processedMessages": "Processed {processed}/{total} messages",
+    "startingIncrementalSync": "Starting incremental sync",
+    "incrementalSyncCompleted": "Incremental sync completed",
+    "taskAborted": "Task aborted",
+    "queueStatus": "Sync Queue Status",
+    "queueProgress": "Progress: {current}/{total}",
+    "currentlySyncing": "Currently syncing",
+    "waiting": "Waiting",
+    "completed": "Completed",
+    "queuePosition": "Position {position}",
+    "preparing": "Preparing",
+    "noMore": "No more"
   },
   "virtualMessageList": {
     "scrolling": "Scrolling..."

@@ -20,6 +20,10 @@ export function registerTakeoutEventHandlers(ctx: CoreContext) {
       logger.withFields({ chatIds, increase }).verbose('Running takeout')
       const pagination = usePagination()
 
+      // Create a single task for all chats
+      const { taskId } = createTask({ chatIds })
+      emitter.emit('takeout:task:progress', updateTaskProgress(taskId, 0, 'Starting sync'))
+
       // Get chat message stats for incremental sync
       const increaseOptions: { chatId: string, firstMessageId: number, latestMessageId: number, messageCount: number }[] = await Promise.all(
         chatIds.map(async (chatId) => {
@@ -36,6 +40,8 @@ export function registerTakeoutEventHandlers(ctx: CoreContext) {
       logger.withFields({ increaseOptions }).verbose('Chat message stats')
 
       let messages: Api.Message[] = []
+      let completedChats = 0
+      const totalChats = chatIds.length
 
       for (const chatId of chatIds) {
         const stats = increaseOptions.find(item => item.chatId === chatId)
@@ -99,10 +105,6 @@ export function registerTakeoutEventHandlers(ctx: CoreContext) {
               alreadySynced: alreadySyncedCount,
               needToSync: needToSyncCount,
             }).verbose('Incremental sync calculation')
-
-            // Create task for manual progress management
-            const { taskId } = createTask({ chatIds: [chatId] })
-            emitter.emit('takeout:task:progress', updateTaskProgress(taskId, 0, 'Starting incremental sync'))
 
             let totalProcessed = 0
 
@@ -182,11 +184,20 @@ export function registerTakeoutEventHandlers(ctx: CoreContext) {
             }
 
             logger.withFields({ chatId, count: forwardMessageCount }).verbose('Forward fill completed')
-
-            // Mark as complete
-            emitter.emit('takeout:task:progress', updateTaskProgress(taskId, 100, 'Incremental sync completed'))
           }
         }
+
+        // Mark this chat as completed
+        completedChats++
+        emitter.emit('takeout:chat:completed', { chatId, taskId })
+        
+        // Update overall progress
+        const overallProgress = Math.round((completedChats / totalChats) * 100)
+        emitter.emit('takeout:task:progress', updateTaskProgress(
+          taskId, 
+          overallProgress, 
+          `Completed ${completedChats}/${totalChats} chats`
+        ))
       }
 
       if (messages.length > 0) {

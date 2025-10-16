@@ -23,6 +23,7 @@ export interface TakeoutEventToCore {
 
 export interface TakeoutEventFromCore {
   'takeout:task:progress': (data: CoreTask<'takeout'>) => void
+  'takeout:chat:completed': (data: { chatId: string, taskId: string }) => void
 }
 
 export type TakeoutEvent = TakeoutEventFromCore & TakeoutEventToCore
