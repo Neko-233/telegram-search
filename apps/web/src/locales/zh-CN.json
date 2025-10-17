@@ -145,7 +145,20 @@
     "completed": "已完成",
     "queuePosition": "第 {position} 位",
     "preparing": "准备中",
-    "noMore": "无更多"
+    "noMore": "无更多",
+    "takeoutInitFailedError": "数据导出会话初始化失败，请按照指引操作",
+    "retryingSync": "正在重试同步..."
+  },
+  "takeoutGuide": {
+    "title": "需要授权数据导出",
+    "description": "Telegram 已向您发送数据导出请求。为了开始同步，您需要：",
+    "step1": "打开 Telegram 应用",
+    "step2": "查找来自 Telegram 的数据导出请求消息",
+    "step3": "点击\"同意\"按钮授权数据导出",
+    "completionHint": "完成授权后，点击下方\"重新同步\"按钮继续",
+    "laterButton": "稍后处理",
+    "retryButton": "重新同步",
+    "retryingButton": "正在重试..."
   },
   "virtualMessageList": {
     "scrolling": "滚动中..."

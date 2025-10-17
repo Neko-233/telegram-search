@@ -145,7 +145,20 @@
     "completed": "Completed",
     "queuePosition": "Position {position}",
     "preparing": "Preparing",
-    "noMore": "No more"
+    "noMore": "No more",
+    "takeoutInitFailedError": "Takeout session initialization failed, please follow the guide",
+    "retryingSync": "Retrying sync..."
+  },
+  "takeoutGuide": {
+    "title": "Data Export Authorization Required",
+    "description": "Telegram has sent you a data export request. To start syncing, you need to:",
+    "step1": "Open Telegram app",
+    "step2": "Find the data export request message from Telegram",
+    "step3": "Click the \"Agree\" button to authorize data export",
+    "completionHint": "After completing authorization, click the \"Retry Sync\" button below to continue",
+    "laterButton": "Handle Later",
+    "retryButton": "Retry Sync",
+    "retryingButton": "Retrying..."
   },
   "virtualMessageList": {
     "scrolling": "Scrolling..."

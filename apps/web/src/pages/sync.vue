@@ -9,6 +9,7 @@ import { toast } from 'vue-sonner'
 
 import ChatSelector from '../components/ChatSelector.vue'
 import SyncQueueStatus from '../components/SyncQueueStatus.vue'
+import TakeoutGuideDialog from '../components/TakeoutGuideDialog.vue'
 import { Button } from '../components/ui/Button'
 import { Progress } from '../components/ui/Progress'
 
@@ -16,6 +17,10 @@ const { t } = useI18n()
 const router = useRouter()
 
 const selectedChats = ref<number[]>([])
+
+// Takeout guide dialog state
+const showTakeoutGuide = ref(false)
+const takeoutErrorMessage = ref<string>()
 
 const sessionStore = useAuthStore()
 const { isLoggedIn } = storeToRefs(sessionStore)
@@ -246,12 +251,73 @@ function handleAllCompleted() {
   }, 2000)
 }
 
+/**
+ * 处理takeout初始化延迟错误
+ */
+function handleTakeoutInitDelay(event: CustomEvent) {
+  const { errorMessage } = event.detail
+  takeoutErrorMessage.value = errorMessage
+  showTakeoutGuide.value = true
+  
+  // 停止进度条
+  NProgress.done()
+  
+  // 重置同步状态 - 因为InitDelay错误表示后端未执行任何任务
+  syncTaskStore.clearSyncQueue()
+  syncTaskStore.currentTask = undefined
+  
+  // 显示错误提示
+  toast.error(t('sync.takeoutInitFailedError'))
+}
+
+/**
+ * 处理takeout初始化失败错误
+ */
+function handleTakeoutInitFailed(event: CustomEvent) {
+  const { errorMessage } = event.detail
+  takeoutErrorMessage.value = errorMessage
+  showTakeoutGuide.value = true
+  
+  // 停止进度条
+  NProgress.done()
+  
+  // 重置同步状态 - 因为InitFailedError表示后端未执行任何任务
+  syncTaskStore.clearSyncQueue()
+  syncTaskStore.currentTask = undefined
+  
+  // 显示错误提示
+  toast.error(t('sync.takeoutInitFailedError'))
+}
+
+/**
+ * 处理重试同步
+ */
+function handleRetrySync() {
+  // 重新发起同步请求
+  if (selectedChats.value.length > 0) {
+    // 重新初始化同步队列
+    syncTaskStore.initSyncQueue(selectedChats.value)
+    
+    websocketStore.sendEvent('takeout:run', {
+      chatIds: selectedChats.value.map(id => id.toString()),
+      increase: increase.value,
+    })
+    
+    NProgress.start()
+    toast.info(t('sync.retryingSync'))
+  }
+}
+
 onMounted(() => {
   window.addEventListener('sync:all-completed', handleAllCompleted)
+  window.addEventListener('takeout:init-delay', handleTakeoutInitDelay as EventListener)
+  window.addEventListener('takeout:init-failed', handleTakeoutInitFailed as EventListener)
 })
 
 onUnmounted(() => {
   window.removeEventListener('sync:all-completed', handleAllCompleted)
+  window.removeEventListener('takeout:init-delay', handleTakeoutInitDelay as EventListener)
+  window.removeEventListener('takeout:init-failed', handleTakeoutInitFailed as EventListener)
 })
 </script>
 
@@ -390,4 +456,11 @@ onUnmounted(() => {
       </div>
     </div>
   </div>
+
+  <!-- Takeout Guide Dialog -->
+  <TakeoutGuideDialog
+    v-model="showTakeoutGuide"
+    :error-message="takeoutErrorMessage"
+    @retry="handleRetrySync"
+  />
 </template>
