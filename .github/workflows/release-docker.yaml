@@ -56,6 +56,7 @@ jobs:
           if [[ "$IMAGE_VERSION" == *beta* ]]; then
             echo "tags<<EOF" >> $GITHUB_OUTPUT
             echo "$IMAGE_REPO:$IMAGE_VERSION" >> $GITHUB_OUTPUT
+            echo "$IMAGE_REPO:beta" >> $GITHUB_OUTPUT
             echo "EOF" >> $GITHUB_OUTPUT
           else
             echo "tags<<EOF" >> $GITHUB_OUTPUT
