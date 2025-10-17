@@ -3,7 +3,7 @@ import type { CountryCode } from '../staticData/countryCodes'
 
 import { useAuthStore, useBridgeStore } from '@tg-search/client'
 import { storeToRefs } from 'pinia'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
@@ -95,6 +95,32 @@ const {
   submitPassword,
 } = authStore.handleAuth()
 
+// 认证错误处理器
+function handleAuthError(event: CustomEvent) {
+  try {
+    const { translationKey } = event.detail
+
+    // 直接使用翻译键获取本地化消息
+    const translatedMessage = t(`errors.${translationKey}`) || t('errors.unknownError')
+
+    // 显示翻译后的错误消息
+    toast.error(translatedMessage)
+  }
+  catch {
+    // 如果翻译失败，显示通用错误消息
+    toast.error(t('errors.unknownError'))
+  }
+}
+
+// 注册和清理事件监听器
+onMounted(() => {
+  window.addEventListener('auth:error:translated', handleAuthError as EventListener)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('auth:error:translated', handleAuthError as EventListener)
+})
+
 watch(() => authStore.auth.needCode, (value) => {
   if (value) {
     authStore.auth.isLoading = false
@@ -164,35 +190,30 @@ function redirectRoot() {
 async function handleLogin() {
   authStore.auth.isLoading = true
 
-  try {
-    switch (state.value.currentStep) {
-      case 'phone': {
-        // 检查手机号码验证错误
-        if (phoneValidationError.value) {
-          toast.error(phoneValidationError.value)
-          authStore.auth.isLoading = false
-          return
-        }
-        // 保存分离的国家区号和纯手机号到会话中
-        websocketStore.updateActiveSession(websocketStore.activeSessionId, {
-          countryCode: selectedCountryCode.value.dialCode,
-          purePhoneNumber: state.value.phoneNumber,
-        })
-        // 组合国家代码和手机号码
-        const fullPhoneNumber = selectedCountryCode.value.dialCode + state.value.phoneNumber
-        login(fullPhoneNumber)
-        break
+  switch (state.value.currentStep) {
+    case 'phone': {
+      // 检查手机号码验证错误
+      if (phoneValidationError.value) {
+        toast.error(phoneValidationError.value)
+        authStore.auth.isLoading = false
+        return
       }
-      case 'code':
-        submitCode(state.value.verificationCode)
-        break
-      case 'password':
-        submitPassword(state.value.twoFactorPassword)
-        break
+      // 保存分离的国家区号和纯手机号到会话中
+      websocketStore.updateActiveSession(websocketStore.activeSessionId, {
+        countryCode: selectedCountryCode.value.dialCode,
+        purePhoneNumber: state.value.phoneNumber,
+      })
+      // 组合国家代码和手机号码
+      const fullPhoneNumber = selectedCountryCode.value.dialCode + state.value.phoneNumber
+      login(fullPhoneNumber)
+      break
     }
-  }
-  catch (error) {
-    toast.error(error instanceof Error ? error.message : String(error))
+    case 'code':
+      submitCode(state.value.verificationCode)
+      break
+    case 'password':
+      submitPassword(state.value.twoFactorPassword)
+      break
   }
 }
 </script>

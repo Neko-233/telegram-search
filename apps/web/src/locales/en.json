@@ -150,6 +150,32 @@
   "virtualMessageList": {
     "scrolling": "Scrolling..."
   },
+  "errors": {
+    "phoneNumberInvalid": "Invalid phone number format. Please check and try again",
+    "phoneNumberBanned": "This phone number has been banned from Telegram",
+    "phoneNumberFlood": "Too many verification code requests. Please try again later",
+    "phoneNumberUnoccupied": "This phone number is not registered with Telegram",
+    "phonePasswordProtected": "This phone number is password protected",
+    "phonePasswordFlood": "Too many password attempts. Please try again later",
+    "phoneCodeInvalid": "Invalid verification code. Please try again",
+    "phoneCodeExpired": "Verification code has expired. Please request a new one",
+    "phoneCodeEmpty": "Please enter the verification code",
+    "phoneCodeHashEmpty": "Verification session has expired. Please request a new code",
+    "apiIdInvalid": "Invalid API configuration. Please check app settings",
+    "apiIdPublishedFlood": "API key has been published and cannot be used",
+    "sessionPasswordNeeded": "Two-factor authentication password required",
+    "authKeyUnregistered": "Login session has expired. Please log in again",
+    "authRestart": "Authentication process needs to be restarted",
+    "passwordHashInvalid": "Incorrect two-factor authentication password",
+    "passwordRequired": "Two-factor authentication password required",
+    "networkError": "Network connection failed. Please check your connection",
+    "timeout": "Request timed out. Please try again",
+    "signInFailed": "Sign in failed. Please try again",
+    "smsCodeCreateFailed": "Failed to send verification code. Please try again",
+    "updateAppToLogin": "Please update the app to the latest version to log in",
+    "unknownError": "An unknown error occurred. Please try again",
+    "parseError": "Failed to parse error information"
+  },
   "base": {
     "toaster": {
       "pwaUpdateReady": {
