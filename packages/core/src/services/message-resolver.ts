@@ -9,6 +9,11 @@ import { useLogger } from '@unbird/logg'
 import { convertToCoreMessage } from '../utils/message'
 
 export interface MessageResolverEventToCore {
+  /**
+   * Processes messages. If `isTakeout` is true, suppresses 'message:data' emissions (browser-facing)
+   * while still recording messages to storage. Consumers should be aware that setting `isTakeout`
+   * changes event side effects.
+   */
   'message:process': (data: { messages: Api.Message[], isTakeout?: boolean }) => void
 }
 
