@@ -32,6 +32,9 @@
     "db:kit": "tsx scripts/db.ts",
     "postinstall": "pnpm run packages:build"
   },
+  "dependencies": {
+    "unocss-preset-shadcn": "^1.0.1"
+  },
   "devDependencies": {
     "@proj-airi/unocss-preset-chromatic": "^1.0.2",
     "@types/node": "^24.7.2",

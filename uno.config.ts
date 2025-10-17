@@ -9,6 +9,7 @@ import {
 } from 'unocss'
 import presetAnimations from 'unocss-preset-animations'
 import { presetScrollbar } from 'unocss-preset-scrollbar'
+import presetShadcn from 'unocss-preset-shadcn'
 
 export function sharedUnoConfig() {
   return defineConfig({
@@ -35,6 +36,9 @@ export function sharedUnoConfig() {
         scrollbarHeight: '6px',
         scrollbarTrackRadius: '4px',
         scrollbarThumbRadius: '4px',
+      }),
+      presetShadcn({
+        color: 'blue',
       }),
     ],
   })
