@@ -194,66 +194,6 @@ pnpm run web:dev     # 终端 2
 
 📖 **完整架构细节、事件流和图表：** [CONTRIBUTING.md](../CONTRIBUTING.md)
 
-## ❓ 常见问题
-
-<details>
-<summary><b>你们会收集用户数据吗？</b></summary>
-
-不会。所有数据保留在您的设备或服务器上。我们从不收集或上传用户数据。
-
-</details>
-
-<details>
-<summary><b>我需要 API 密钥才能使用吗？</b></summary>
-
-不需要。应用程序使用默认设置即可工作。API 密钥是可选的：
-- Telegram API 密钥：默认密钥可用但有速率限制。获取自己的密钥以获得更好的性能。
-- Embedding API 密钥：仅语义/自然语言搜索需要。
-
-</details>
-
-<details>
-<summary><b>浏览器模式和服务器模式有什么区别？</b></summary>
-
-- **浏览器模式（PGlite）**：完全在浏览器中运行，无需服务器。适合个人使用。
-- **服务器模式（PostgreSQL）**：功能完整，性能更好，适合生产部署。
-
-</details>
-
-<details>
-<summary><b>我可以使用自己的 Embedding 模型吗？</b></summary>
-
-可以！将 `EMBEDDING_PROVIDER` 设置为 `ollama`，并将 `EMBEDDING_BASE_URL` 指向您的本地 Ollama 实例。详见 [docs/ENVIRONMENT.md](./ENVIRONMENT.md)。
-
-</details>
-
-<details>
-<summary><b>如何备份我的数据？</b></summary>
-
-您的数据存储在：
-- **Docker 卷**：`telegram-search-data`（挂载到 `/app/data`）
-- **浏览器模式**：浏览器的 IndexedDB
-
-您可以随时通过 UI 导出消息为 CSV/JSON。
-
-</details>
-
-## 📚 文档
-
-- **简体中文**：[README_CN.md](./README_CN.md)（您在这里！）
-- **English**：[README.md](../README.md)
-- **日本語**：[README_JA.md](./README_JA.md)
-- **技术架构**：[CONTRIBUTING.md](../CONTRIBUTING.md)
-- **环境变量**：[docs/ENVIRONMENT.md](./ENVIRONMENT.md)
-- **行为准则**：[CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md)
-- **安全政策**：[SECURITY.md](../SECURITY.md)
-
-## 🤝 社区
-
-- **Discord**：[加入我们的 Discord](https://discord.gg/NzYsmJSgCT)
-- **Telegram**：[加入我们的 Telegram 群组](https://t.me/+Gs3SH2qAPeFhYmU9)
-- **DeepWiki**：[查看文档](https://deepwiki.com/groupultra/telegram-search)
-
 ## 🚨 警告
 > [!WARNING]
 > 我们未发行任何虚拟货币，请勿上当受骗。

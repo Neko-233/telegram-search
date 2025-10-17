@@ -194,66 +194,6 @@ This project is a **monorepo** with event-driven architecture:
 
 📖 **Full architecture details, event flow, and diagrams:** [CONTRIBUTING.md](./CONTRIBUTING.md)
 
-## ❓ FAQ
-
-<details>
-<summary><b>Do you collect any user data?</b></summary>
-
-No. All data stays on your machine or server. We never collect or upload user data.
-
-</details>
-
-<details>
-<summary><b>Do I need API keys to use this?</b></summary>
-
-No. The application works with default settings. API keys are optional:
-- Telegram API keys: Default keys work but have rate limits. Get your own for better performance.
-- Embedding API keys: Only needed for semantic/natural language search.
-
-</details>
-
-<details>
-<summary><b>What's the difference between browser mode and server mode?</b></summary>
-
-- **Browser mode (PGlite)**: Runs entirely in your browser, no server needed. Good for personal use.
-- **Server mode (PostgreSQL)**: Full-featured with better performance, suitable for production deployment.
-
-</details>
-
-<details>
-<summary><b>Can I use my own embedding model?</b></summary>
-
-Yes! Set `EMBEDDING_PROVIDER` to `ollama` and point `EMBEDDING_BASE_URL` to your local Ollama instance. See [docs/ENVIRONMENT.md](./docs/ENVIRONMENT.md) for details.
-
-</details>
-
-<details>
-<summary><b>How do I backup my data?</b></summary>
-
-Your data is stored in:
-- **Docker volume**: `telegram-search-data` (mounted to `/app/data`)
-- **Browser mode**: Browser's IndexedDB
-
-You can export messages to CSV/JSON anytime via the UI.
-
-</details>
-
-## 📚 Documentation
-
-- **English**: [README.md](./README.md) (you're here!)
-- **简体中文**: [README_CN.md](./docs/README_CN.md)
-- **日本語**: [README_JA.md](./docs/README_JA.md)
-- **Technical Architecture**: [CONTRIBUTING.md](./CONTRIBUTING.md)
-- **Environment Variables**: [docs/ENVIRONMENT.md](./docs/ENVIRONMENT.md)
-- **Code of Conduct**: [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)
-- **Security**: [SECURITY.md](./SECURITY.md)
-
-## 🤝 Community
-
-- **Discord**: [Join our Discord](https://discord.gg/NzYsmJSgCT)
-- **Telegram**: [Join our Telegram group](https://t.me/+Gs3SH2qAPeFhYmU9)
-- **DeepWiki**: [View documentation](https://deepwiki.com/groupultra/telegram-search)
-
 ## 🚨 Warnings
 > [!WARNING]
 > We have not issued any virtual currency, please do not be deceived.

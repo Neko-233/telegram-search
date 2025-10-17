@@ -194,66 +194,6 @@ pnpm run web:dev     # ターミナル 2
 
 📖 **完全なアーキテクチャの詳細、イベントフロー、図：** [CONTRIBUTING.md](../CONTRIBUTING.md)
 
-## ❓ よくある質問
-
-<details>
-<summary><b>ユーザーデータを収集しますか？</b></summary>
-
-いいえ。すべてのデータはあなたのマシンまたはサーバーに残ります。ユーザーデータを収集またはアップロードすることはありません。
-
-</details>
-
-<details>
-<summary><b>使用するには API キーが必要ですか？</b></summary>
-
-いいえ。アプリケーションはデフォルト設定で動作します。API キーはオプションです：
-- Telegram API キー：デフォルトのキーは動作しますが、レート制限があります。より良いパフォーマンスを得るには独自のキーを取得してください。
-- Embedding API キー：セマンティック/自然言語検索にのみ必要です。
-
-</details>
-
-<details>
-<summary><b>ブラウザモードとサーバーモードの違いは何ですか？</b></summary>
-
-- **ブラウザモード（PGlite）**：完全にブラウザで実行され、サーバーは不要です。個人使用に適しています。
-- **サーバーモード（PostgreSQL）**：フル機能でパフォーマンスが向上し、本番デプロイに適しています。
-
-</details>
-
-<details>
-<summary><b>独自の Embedding モデルを使用できますか？</b></summary>
-
-はい！`EMBEDDING_PROVIDER` を `ollama` に設定し、`EMBEDDING_BASE_URL` をローカル Ollama インスタンスに向けてください。詳細は [docs/ENVIRONMENT.md](./ENVIRONMENT.md) を参照してください。
-
-</details>
-
-<details>
-<summary><b>データをバックアップするにはどうすればよいですか？</b></summary>
-
-データは以下に保存されます：
-- **Docker ボリューム**：`telegram-search-data`（`/app/data` にマウント）
-- **ブラウザモード**：ブラウザの IndexedDB
-
-UI を通じていつでもメッセージを CSV/JSON にエクスポートできます。
-
-</details>
-
-## 📚 ドキュメント
-
-- **日本語**：[README_JA.md](./README_JA.md)（ここです！）
-- **English**：[README.md](../README.md)
-- **简体中文**：[README_CN.md](./README_CN.md)
-- **技術アーキテクチャ**：[CONTRIBUTING.md](../CONTRIBUTING.md)
-- **環境変数**：[docs/ENVIRONMENT.md](./ENVIRONMENT.md)
-- **行動規範**：[CODE_OF_CONDUCT.md](../CODE_OF_CONDUCT.md)
-- **セキュリティ**：[SECURITY.md](../SECURITY.md)
-
-## 🤝 コミュニティ
-
-- **Discord**：[Discord に参加](https://discord.gg/NzYsmJSgCT)
-- **Telegram**：[Telegram グループに参加](https://t.me/+Gs3SH2qAPeFhYmU9)
-- **DeepWiki**：[ドキュメントを表示](https://deepwiki.com/groupultra/telegram-search)
-
 ## 🚨 警告
 > [!WARNING]
 > 仮想通貨は一切発行していません。詐欺にご注意ください。
