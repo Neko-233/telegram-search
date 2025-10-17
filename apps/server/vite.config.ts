@@ -1,5 +1,4 @@
 import DrizzleORMMigrations from '@proj-airi/unplugin-drizzle-orm-migrations/vite'
-import { resolve } from 'pathe'
 import { defineConfig } from 'vite'
 
 // NOTE: Since the alias for the core package has been set,
@@ -16,10 +15,11 @@ export default defineConfig({
     include: ['@tg-search/core', '@tg-search/common'],
   },
 
-  resolve: {
-    alias: {
-      '@tg-search/common': resolve(import.meta.dirname, '../../packages/common/src'),
-      '@tg-search/core': resolve(import.meta.dirname, '../../packages/core/src'),
-    },
-  },
+  // FIXME
+  // resolve: {
+  //   alias: {
+  //     '@tg-search/common': resolve(import.meta.dirname, '../../packages/common/src'),
+  //     '@tg-search/core': resolve(import.meta.dirname, '../../packages/core/src'),
+  //   },
+  // },
 })
