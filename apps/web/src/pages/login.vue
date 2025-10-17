@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { CountryCode } from '../data/countryCodes'
+import type { CountryCode } from '../staticData/countryCodes'
 
 import { useAuthStore, useBridgeStore } from '@tg-search/client'
 import { storeToRefs } from 'pinia'
@@ -10,7 +10,7 @@ import { toast } from 'vue-sonner'
 
 import CountryCodeSelector from '../components/ui/CountryCodeSelector.vue'
 import DynamicStepper from '../components/ui/DynamicStepper.vue'
-import { countryCodes } from '../data/countryCodes'
+import { countryCodes } from '../staticData/countryCodes'
 
 const { t } = useI18n()
 type LoginStep = 'phone' | 'code' | 'password' | 'complete'
