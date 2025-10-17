@@ -66,6 +66,10 @@ export const useMessageStore = defineStore('message', () => {
   }
 
   async function pushMessages(messages: CoreMessage[]) {
+    if (!currentChatId.value) {
+      return
+    }
+
     const filteredMessages = messages.filter(msg => msg.chatId === currentChatId.value)
 
     const direction = determineMessageDirection(filteredMessages, messageWindow.value)
