@@ -83,109 +83,111 @@ onMounted(() => {
 </script>
 
 <template>
-  <header class="flex items-center border-b border-b-secondary p-4 px-4 dark:border-b-gray-700">
-    <div class="flex items-center gap-2">
-      <span class="text-lg text-gray-900 font-medium dark:text-gray-100">{{ t('settings.settings') }}</span>
+  <header class="flex items-center justify-between border-b bg-card/50 px-6 py-4 backdrop-blur-sm">
+    <div class="flex items-center gap-3">
+      <h1 class="text-lg font-semibold">
+        {{ t('settings.settings') }}
+      </h1>
     </div>
 
-    <div class="ml-auto flex items-center gap-2">
+    <div class="flex items-center gap-2">
       <Button icon="i-lucide-save" @click="updateConfig">
         {{ t('settings.save') }}
       </Button>
     </div>
   </header>
 
-  <div class="container mx-auto p-4 space-y-6">
+  <div class="container mx-auto p-6 space-y-6">
     <!-- Settings form -->
     <div class="space-y-6">
       <!-- Database settings (hidden when VITE_WITH_CORE is enabled) -->
-      <div v-if="!isWithCore" class="border border-neutral-200 rounded-lg bg-card p-4 dark:border-gray-600 dark:bg-gray-800">
-        <h2 class="mb-4 text-xl text-gray-900 font-semibold dark:text-gray-100">
+      <div v-if="!isWithCore" class="border rounded-lg bg-card p-6 shadow-sm">
+        <h2 class="mb-4 text-xl font-semibold">
           {{ t('settings.databaseSettings') }}
         </h2>
         <div class="space-y-4">
           <div>
-            <label class="block text-sm text-gray-600 font-medium dark:text-gray-400">Provider</label>
+            <label class="block text-sm text-muted-foreground font-medium">Provider</label>
             <SelectDropdown
               v-model="config.database.type"
               :options="databaseProviderOptions"
             />
           </div>
           <div v-if="isPostgresSelected">
-            <label class="block text-sm text-gray-600 font-medium dark:text-gray-400">Connection URL</label>
+            <label class="block text-sm text-muted-foreground font-medium">Connection URL</label>
             <input
               v-model="config.database.url"
               type="text"
               placeholder="postgresql://user:password@host:port/database"
-              class="mt-1 block w-full border border-neutral-200 rounded-md bg-neutral-100 px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+              class="mt-1 block w-full border rounded-md bg-background px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-            <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+            <p class="mt-1 text-xs text-muted-foreground">
               Optional: Use connection URL instead of individual fields below
             </p>
           </div>
           <div v-if="isPostgresSelected" class="grid gap-4 md:grid-cols-2">
             <div>
-              <label class="block text-sm text-gray-600 font-medium dark:text-gray-400">Host</label>
+              <label class="block text-sm text-muted-foreground font-medium">Host</label>
               <input
                 v-model="config.database.host"
                 type="text"
                 :disabled="shouldDisableIndividualFields"
-                class="mt-1 block w-full border border-neutral-200 rounded-md px-3 py-2 text-gray-900 dark:border-gray-600 dark:text-gray-100"
+                class="mt-1 block w-full border rounded-md px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 :class="{
-                  'bg-gray-200 dark:bg-gray-600 cursor-not-allowed opacity-60': shouldDisableIndividualFields,
-                  'bg-neutral-100 dark:bg-gray-700': !shouldDisableIndividualFields,
+                  'cursor-not-allowed bg-muted opacity-60': shouldDisableIndividualFields,
+                  'bg-background': !shouldDisableIndividualFields,
                 }"
               >
             </div>
             <div>
-              <label class="block text-sm text-gray-600 font-medium dark:text-gray-400">Port</label>
+              <label class="block text-sm text-muted-foreground font-medium">Port</label>
               <input
                 v-model.number="config.database.port"
                 type="number"
                 :disabled="shouldDisableIndividualFields"
-                class="mt-1 block w-full border border-neutral-200 rounded-md px-3 py-2 text-gray-900 dark:border-gray-600 dark:text-gray-100"
+                class="mt-1 block w-full border rounded-md px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 :class="{
-                  'bg-gray-200 dark:bg-gray-600 cursor-not-allowed opacity-60': shouldDisableIndividualFields,
-                  'bg-neutral-100 dark:bg-gray-700': !shouldDisableIndividualFields,
+                  'cursor-not-allowed bg-muted opacity-60': shouldDisableIndividualFields,
+                  'bg-background': !shouldDisableIndividualFields,
                 }"
               >
             </div>
             <div>
-              <label class="block text-sm text-gray-600 font-medium dark:text-gray-400">Username</label>
+              <label class="block text-sm text-muted-foreground font-medium">Username</label>
               <input
                 v-model="config.database.user"
                 type="text"
                 :disabled="shouldDisableIndividualFields"
-                class="mt-1 block w-full border border-neutral-200 rounded-md px-3 py-2 text-gray-900 dark:border-gray-600 dark:text-gray-100"
+                class="mt-1 block w-full border rounded-md px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 :class="{
-                  'bg-gray-200 dark:bg-gray-600 cursor-not-allowed opacity-60': shouldDisableIndividualFields,
-                  'bg-neutral-100 dark:bg-gray-700': !shouldDisableIndividualFields,
+                  'cursor-not-allowed bg-muted opacity-60': shouldDisableIndividualFields,
+                  'bg-background': !shouldDisableIndividualFields,
                 }"
               >
             </div>
             <div>
-              <label class="block text-sm text-gray-600 font-medium dark:text-gray-400">Password</label>
+              <label class="block text-sm text-muted-foreground font-medium">Password</label>
               <input
                 v-model="config.database.password"
                 type="password"
                 :disabled="shouldDisableIndividualFields"
-                class="mt-1 block w-full border border-neutral-200 rounded-md px-3 py-2 text-gray-900 dark:border-gray-600 dark:text-gray-100"
+                class="mt-1 block w-full border rounded-md px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 :class="{
-                  'bg-gray-200 dark:bg-gray-600 cursor-not-allowed opacity-60': shouldDisableIndividualFields,
-                  'bg-neutral-100 dark:bg-gray-700': !shouldDisableIndividualFields,
+                  'cursor-not-allowed bg-muted opacity-60': shouldDisableIndividualFields,
+                  'bg-background': !shouldDisableIndividualFields,
                 }"
               >
             </div>
             <div class="md:col-span-2">
-              <label class="block text-sm text-gray-600 font-medium dark:text-gray-400">Database Name</label>
+              <label class="block text-sm text-muted-foreground font-medium">Database Name</label>
               <input
                 v-model="config.database.database"
                 type="text"
                 :disabled="shouldDisableIndividualFields"
-                class="mt-1 block w-full border border-neutral-200 rounded-md px-3 py-2 text-gray-900 dark:border-gray-600 dark:text-gray-100"
+                class="mt-1 block w-full border rounded-md px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 :class="{
-                  'bg-gray-200 dark:bg-gray-600 cursor-not-allowed opacity-60': shouldDisableIndividualFields,
-                  'bg-neutral-100 dark:bg-gray-700': !shouldDisableIndividualFields,
+                  'cursor-not-allowed bg-muted opacity-60': shouldDisableIndividualFields,
+                  'bg-background': !shouldDisableIndividualFields,
                 }"
               >
             </div>
@@ -194,31 +196,31 @@ onMounted(() => {
       </div>
 
       <!-- API settings -->
-      <div class="border border-neutral-200 rounded-lg bg-card p-4 dark:border-gray-600 dark:bg-gray-800">
-        <h2 class="mb-4 text-xl text-gray-900 font-semibold dark:text-gray-100">
+      <div class="border rounded-lg bg-card p-6 shadow-sm">
+        <h2 class="mb-4 text-xl font-semibold">
           {{ t('settings.apiSettings') }}
         </h2>
         <div class="space-y-4">
           <!-- Telegram API -->
           <div>
-            <h3 class="mb-2 text-lg text-gray-900 font-medium dark:text-gray-100">
+            <h3 class="mb-2 text-lg font-medium">
               {{ t('settings.telegramApi') }}
             </h3>
             <div class="grid gap-4 md:grid-cols-2">
               <div>
-                <label class="block text-sm text-gray-600 font-medium dark:text-gray-400">API ID</label>
+                <label class="block text-sm text-muted-foreground font-medium">API ID</label>
                 <input
                   v-model="config.api.telegram.apiId"
                   type="text"
-                  class="mt-1 block w-full border border-neutral-200 rounded-md bg-neutral-100 px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                  class="mt-1 block w-full border rounded-md bg-background px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
               </div>
               <div>
-                <label class="block text-sm text-gray-600 font-medium dark:text-gray-400">API Hash</label>
+                <label class="block text-sm text-muted-foreground font-medium">API Hash</label>
                 <input
                   v-model="config.api.telegram.apiHash"
                   type="password"
-                  class="mt-1 block w-full border border-neutral-200 rounded-md bg-neutral-100 px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                  class="mt-1 block w-full border rounded-md bg-background px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
               </div>
             </div>
@@ -226,45 +228,45 @@ onMounted(() => {
 
           <!-- OpenAI API -->
           <div>
-            <h3 class="mb-2 text-lg text-gray-900 font-medium dark:text-gray-100">
+            <h3 class="mb-2 text-lg font-medium">
               {{ t('settings.embedding') }}
             </h3>
             <div class="grid gap-4">
               <div>
-                <label class="block text-sm text-gray-600 font-medium dark:text-gray-400">Provider</label>
+                <label class="block text-sm text-muted-foreground font-medium">Provider</label>
                 <SelectDropdown
                   v-model="config.api.embedding.provider"
                   :options="embeddingProviderOptions"
                 />
               </div>
               <div>
-                <label class="block text-sm text-gray-600 font-medium dark:text-gray-400">{{ t('settings.model') }}</label>
+                <label class="block text-sm text-muted-foreground font-medium">{{ t('settings.model') }}</label>
                 <input
                   v-model="config.api.embedding.model"
-                  class="mt-1 block w-full border border-neutral-200 rounded-md bg-neutral-100 px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                  class="mt-1 block w-full border rounded-md bg-background px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
               </div>
               <div>
-                <label class="block text-sm text-gray-600 font-medium dark:text-gray-400">{{ t('settings.dimension') }}</label>
+                <label class="block text-sm text-muted-foreground font-medium">{{ t('settings.dimension') }}</label>
                 <input
                   v-model="config.api.embedding.dimension"
-                  class="mt-1 block w-full border border-neutral-200 rounded-md bg-neutral-100 px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                  class="mt-1 block w-full border rounded-md bg-background px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
               </div>
               <div>
-                <label class="block text-sm text-gray-600 font-medium dark:text-gray-400">{{ t('settings.apiKey') }}</label>
+                <label class="block text-sm text-muted-foreground font-medium">{{ t('settings.apiKey') }}</label>
                 <input
                   v-model="config.api.embedding.apiKey"
                   type="password"
-                  class="mt-1 block w-full border border-neutral-200 rounded-md bg-neutral-100 px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                  class="mt-1 block w-full border rounded-md bg-background px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
               </div>
               <div>
-                <label class="block text-sm text-gray-600 font-medium dark:text-gray-400">{{ t('settings.apiBaseUrl') }}</label>
+                <label class="block text-sm text-muted-foreground font-medium">{{ t('settings.apiBaseUrl') }}</label>
                 <input
                   v-model="config.api.embedding.apiBase"
                   type="text"
-                  class="mt-1 block w-full border border-neutral-200 rounded-md bg-neutral-100 px-3 py-2 text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+                  class="mt-1 block w-full border rounded-md bg-background px-3 py-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
               </div>
             </div>
@@ -273,17 +275,17 @@ onMounted(() => {
       </div>
 
       <!-- Resolvers settings -->
-      <div class="border border-neutral-200 rounded-lg bg-card p-4 dark:border-gray-600 dark:bg-gray-800">
-        <h2 class="mb-4 text-xl text-gray-900 font-semibold dark:text-gray-100">
+      <div class="border rounded-lg bg-card p-6 shadow-sm">
+        <h2 class="mb-4 text-xl font-semibold">
           {{ t('settings.resolversSettings') }}
         </h2>
         <div class="space-y-4">
-          <p class="text-sm text-gray-600 dark:text-gray-400">
+          <p class="text-sm text-muted-foreground">
             {{ t('settings.resolversDescription') }}
           </p>
           <div class="grid gap-4 md:grid-cols-2">
             <div v-for="resolver in messageResolvers" :key="resolver.key" class="flex items-center justify-between">
-              <label class="text-sm text-gray-600 font-medium dark:text-gray-400">
+              <label class="text-sm text-muted-foreground font-medium">
                 {{ t(`settings.${resolver.key}Resolver`) }}
               </label>
               <label class="relative inline-flex cursor-pointer items-center">
@@ -293,7 +295,7 @@ onMounted(() => {
                   class="peer sr-only"
                   @change="toggleMessageResolver(resolver.key, ($event.target as HTMLInputElement).checked)"
                 >
-                <div class="peer h-6 w-11 rounded-full bg-gray-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:border-gray-300 dark:border-gray-600 after:rounded-full after:bg-white dark:bg-gray-700 peer-checked:bg-blue-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 after:transition-all after:content-[''] peer-checked:after:translate-x-full peer-checked:after:border-white dark:peer-focus:ring-blue-800" />
+                <div class="peer h-6 w-11 rounded-full bg-muted after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:border after:rounded-full after:bg-background peer-checked:bg-primary peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-ring after:transition-all after:content-[''] peer-checked:after:translate-x-full" />
               </label>
             </div>
           </div>

@@ -44,9 +44,11 @@ watch(keywordDebounced, (newKeyword) => {
 
 <template>
   <div class="h-full flex flex-col">
-    <header class="flex items-center border-b border-b-neutral-200 p-4 px-4 dark:border-b-gray-700">
-      <div class="flex items-center gap-2">
-        <span class="text-lg text-gray-900 font-medium dark:text-gray-100">{{ t('search.search') }}</span>
+    <header class="flex items-center border-b bg-card/50 px-6 py-4 backdrop-blur-sm">
+      <div class="flex items-center gap-3">
+        <h1 class="text-lg font-semibold">
+          {{ t('search.search') }}
+        </h1>
       </div>
     </header>
 
@@ -74,13 +76,13 @@ watch(keywordDebounced, (newKeyword) => {
         <MessageList :messages="searchResult" :keyword="keyword" />
       </template>
       <template v-else-if="isLoading">
-        <div class="flex flex-col items-center justify-center py-12 text-gray-500 opacity-70 dark:text-gray-400">
+        <div class="flex flex-col items-center justify-center py-12 text-muted-foreground opacity-70">
           <span class="i-lucide-loader-circle mb-2 animate-spin text-3xl" />
           <span>{{ t('search.searching') }}</span>
         </div>
       </template>
       <template v-else-if="searchResult.length === 0">
-        <div class="flex flex-col items-center justify-center py-12 text-gray-500 opacity-70 dark:text-gray-400">
+        <div class="flex flex-col items-center justify-center py-12 text-muted-foreground opacity-70">
           <span class="i-lucide-search mb-2 text-3xl" />
           <span>{{ t('search.noRelatedMessages') }}</span>
         </div>

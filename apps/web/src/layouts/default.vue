@@ -131,7 +131,7 @@ function handleAvatarClick() {
 
 <template>
   <div
-    class="h-screen w-full flex overflow-hidden bg-background text-sm font-medium dark:bg-gray-900"
+    class="h-screen w-full flex overflow-hidden bg-background text-sm font-medium"
   >
     <!-- Mobile backdrop -->
     <div
