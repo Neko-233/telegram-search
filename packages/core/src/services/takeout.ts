@@ -10,8 +10,6 @@ import { Err, Ok } from '@unbird/result'
 import bigInt from 'big-integer'
 import { Api } from 'telegram'
 
-import { useTasks } from '../utils/task'
-
 export interface TakeoutTaskMetadata {
   chatIds: string[]
 }
@@ -47,63 +45,41 @@ export interface TakeoutOpts {
 
   // Disable auto progress emission (for manual progress management in handler)
   disableAutoProgress?: boolean
+
+  // Task object (required, should be created by handler and passed in)
+  task: CoreTask<'takeout'>
 }
 
 export type TakeoutService = ReturnType<typeof createTakeoutService>
 
 // https://core.telegram.org/api/takeout
 export function createTakeoutService(ctx: CoreContext) {
-  const { emitter, withError, getClient } = ctx
+  const { withError, getClient } = ctx
 
   const logger = useLogger()
 
-  const { createTask, updateTaskProgress, updateTaskError, abortTask } = useTasks('takeout')
-
-  const emitProgress = (taskId: string, progress: number, message?: string) => {
-    emitter.emit('takeout:task:progress', updateTaskProgress(taskId, progress, message))
-  }
-
-  const emitError = (taskId: string, error: Error) => {
-    logger.withError(error).error('Takeout task error')
-    emitter.emit('takeout:task:progress', updateTaskError(taskId, error))
-  }
-
-  async function initTakeout(): Promise<Result<Api.account.Takeout>> {
+  async function initTakeout() {
     const fileMaxSize = bigInt(1024 * 1024 * 1024) // 1GB
 
-    try {
-      // TODO: options
-      const takeout = await getClient().invoke(new Api.account.InitTakeoutSession({
-        contacts: true,
-        messageUsers: true,
-        messageChats: true,
-        messageMegagroups: true,
-        messageChannels: true,
-        files: true,
-        fileMaxSize,
-      }))
-
-      return Ok(takeout)
-    }
-    catch (error) {
-      return Err(withError(error, 'Init takeout session failed'))
-    }
+    // TODO: options
+    return await getClient().invoke(new Api.account.InitTakeoutSession({
+      contacts: true,
+      messageUsers: true,
+      messageChats: true,
+      messageMegagroups: true,
+      messageChannels: true,
+      files: true,
+      fileMaxSize,
+    }))
   }
 
   async function finishTakeout(takeout: Api.account.Takeout, success: boolean) {
-    try {
-      await getClient().invoke(new Api.InvokeWithTakeout({
-        takeoutId: takeout.id,
-        query: new Api.account.FinishTakeoutSession({
-          success,
-        }),
-      }))
-
-      return Ok(null)
-    }
-    catch (error) {
-      return Err(withError(error, 'Finish takeout session failed'))
-    }
+    await getClient().invoke(new Api.InvokeWithTakeout({
+      takeoutId: takeout.id,
+      query: new Api.account.FinishTakeoutSession({
+        success,
+      }),
+    }))
   }
 
   async function getHistoryWithMessagesCount(chatId: EntityLike): Promise<Result<Api.messages.TypeMessages & { count: number }>> {
@@ -142,11 +118,9 @@ export function createTakeoutService(ctx: CoreContext) {
     chatId: string,
     options: Omit<TakeoutOpts, 'chatId'>,
   ): AsyncGenerator<Api.Message> {
-    const { taskId, abortController } = createTask({
-      chatIds: [chatId],
-    })
+    const { task } = options
 
-    emitProgress(taskId, 0, 'Init takeout session')
+    task.updateProgress(0, 'Init takeout session')
 
     let offsetId = options.pagination.offset
     let hasMore = true
@@ -156,20 +130,28 @@ export function createTakeoutService(ctx: CoreContext) {
     const minId = options.minId
     const maxId = options.maxId
 
-    const takeoutSession = (await initTakeout()).expect('Init takeout session failed')
-
-    // Only emit initial progress if auto-progress is enabled
-    if (!options.disableAutoProgress) {
-      emitProgress(taskId, 0, 'Get messages')
-    }
-
-    // Use provided expected count, or fetch from Telegram
-    const count = options.expectedCount ?? (await getHistoryWithMessagesCount(chatId)).expect('Failed to get history').count
-
-    logger.withFields({ expectedCount: count, providedCount: options.expectedCount }).verbose('Message count for progress')
+    let takeoutSession: Api.account.Takeout
 
     try {
-      while (hasMore && !abortController.signal.aborted) {
+      takeoutSession = await initTakeout()
+    }
+    catch (error) {
+      task.updateError(withError(error, 'Init takeout session failed'))
+      return
+    }
+
+    try {
+      // Only emit initial progress if auto-progress is enabled
+      if (!options.disableAutoProgress) {
+        task.updateProgress(0, 'Get messages')
+      }
+
+      // Use provided expected count, or fetch from Telegram
+      const count = options.expectedCount ?? (await getHistoryWithMessagesCount(chatId)).expect('Failed to get history').count
+
+      logger.withFields({ expectedCount: count, providedCount: options.expectedCount }).verbose('Message count for progress')
+
+      while (hasMore && !task.abortController.signal.aborted) {
         // https://core.telegram.org/api/offsets#hash-generation
         const id = BigInt(chatId)
         const hashBigInt = id ^ (id >> 21n) ^ (id << 35n) ^ (id >> 4n) + id
@@ -198,7 +180,7 @@ export function createTakeoutService(ctx: CoreContext) {
 
         // Type safe check
         if (!('messages' in result)) {
-          emitError(taskId, new Error('Invalid response format from Telegram API'))
+          task.updateError(new Error('Invalid response format from Telegram API'))
           break
         }
 
@@ -216,7 +198,7 @@ export function createTakeoutService(ctx: CoreContext) {
         logger.withFields({ count: messages.length }).debug('Got messages batch')
 
         for (const message of messages) {
-          if (abortController.signal.aborted) {
+          if (task.abortController.signal.aborted) {
             break
           }
 
@@ -233,42 +215,40 @@ export function createTakeoutService(ctx: CoreContext) {
 
         // Only emit progress if auto-progress is enabled
         if (!options.disableAutoProgress) {
-          emitter.emit(
-            'takeout:task:progress',
-            updateTaskProgress(
-              taskId,
-              Number((processedCount / count).toFixed(2)),
-              `Processed ${processedCount}/${count} messages`,
-            ),
+          task.updateProgress(
+            Number(((processedCount / count) * 100).toFixed(2)),
+            `Processed ${processedCount}/${count} messages`,
           )
         }
       }
 
       await finishTakeout(takeoutSession, true)
 
-      if (abortController.signal.aborted) {
-        emitError(taskId, new Error('Task aborted'))
+      if (task.abortController.signal.aborted) {
+        // Task was aborted, handler layer already updated task status
+        logger.withFields({ taskId: task.taskId }).verbose('Takeout messages aborted')
         return
       }
 
       // Only emit final progress if auto-progress is enabled
       if (!options.disableAutoProgress) {
-        emitProgress(taskId, 100)
+        task.updateProgress(100)
       }
-      logger.withFields({ taskId }).verbose('Takeout messages finished')
+      logger.withFields({ taskId: task.taskId }).verbose('Takeout messages finished')
     }
     catch (error) {
       logger.withError(error).error('Takeout messages failed')
 
-      // TODO: error handler
+      // Preserve the original error for better error reporting
+      const errorToEmit = error instanceof Error ? error : new Error('Takeout messages failed')
+
       await finishTakeout(takeoutSession, false)
-      emitError(taskId, new Error('Takeout messages failed'))
+      task.updateError(errorToEmit)
     }
   }
 
   return {
     takeoutMessages,
     getTotalMessageCount,
-    abortTask,
   }
 }
