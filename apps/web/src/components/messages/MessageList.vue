@@ -85,7 +85,7 @@ function handleLongPress(event: TouchEvent, message: CoreMessage) {
 </script>
 
 <template>
-  <ul class="md:scrollbar-thumb-secondary md:scrollbar-track-transparent h-full flex flex-col animate-fade-in overflow-y-auto scrollbar-none md:max-h-[540px] md:scrollbar-thin">
+  <ul class="h-full flex flex-col animate-fade-in overflow-y-auto md:max-h-[540px]">
     <li
       v-for="item in props.messages"
       :key="item.uuid"

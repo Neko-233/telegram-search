@@ -105,7 +105,7 @@ watch(keywordDebounced, (newKeyword) => {
 
         <!-- 搜索结果 -->
         <div
-          class="flex-1 overflow-y-auto scrollbar-none md:max-h-[60vh] md:flex-initial md:scrollbar md:scrollbar-rounded md:scrollbar-w-6px"
+          class="flex-1 overflow-y-auto md:max-h-[60vh] md:flex-initial"
           :class="keywordDebounced ? 'md:min-h-[300px]' : 'md:min-h-[200px]'"
         >
           <Transition

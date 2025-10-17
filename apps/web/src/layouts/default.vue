@@ -238,7 +238,7 @@ function handleAvatarClick() {
         <div class="min-h-0 flex-1 overflow-hidden">
           <VList
             :data="activeGroupChats"
-            class="h-full py-2 scrollbar scrollbar-rounded scrollbar-w-6px"
+            class="h-full py-2"
           >
             <template #default="{ item: chat }">
               <div
@@ -321,19 +321,3 @@ function handleAvatarClick() {
     </div>
   </div>
 </template>
-
-<style>
-/* Hide scrollbar by default, show on hover */
-.scrollbar::-webkit-scrollbar-thumb {
-  background-color: transparent;
-  transition: background-color 0.2s;
-}
-
-.scrollbar:hover::-webkit-scrollbar-thumb {
-  background-color: var(--scrollbar-thumb);
-}
-
-.scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: var(--scrollbar-thumb);
-}
-</style>
