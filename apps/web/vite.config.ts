@@ -11,6 +11,7 @@ import VueRouter from 'unplugin-vue-router/vite'
 import { defineConfig } from 'vite'
 import Inspect from 'vite-plugin-inspect'
 import { VitePWA } from 'vite-plugin-pwa'
+import { splashScreen } from 'vite-plugin-splash-screen'
 import Devtools from 'vite-plugin-vue-devtools'
 import Layouts from 'vite-plugin-vue-layouts'
 
@@ -90,6 +91,10 @@ export default defineConfig({
 
     DrizzleORMMigrations({
       root: '../..',
+    }),
+
+    splashScreen({
+      logoSrc: 'favicon.svg',
     }),
   ],
 

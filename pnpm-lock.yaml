@@ -217,6 +217,9 @@ importers:
       vite-plugin-pwa:
         specifier: ^1.1.0
         version: 1.1.0(rolldown-vite@7.1.16(@types/node@24.7.2)(esbuild@0.25.10)(jiti@2.6.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))(workbox-build@7.3.0)(workbox-window@7.3.0)
+      vite-plugin-splash-screen:
+        specifier: ^0.2.1
+        version: 0.2.1
       vite-plugin-vue-devtools:
         specifier: ^8.0.2
         version: 8.0.2(rolldown-vite@7.1.16(@types/node@24.7.2)(esbuild@0.25.10)(jiti@2.6.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))(vue@3.5.22(typescript@5.9.3))
@@ -5649,6 +5652,9 @@ packages:
     peerDependenciesMeta:
       '@vite-pwa/assets-generator':
         optional: true
+
+  vite-plugin-splash-screen@0.2.1:
+    resolution: {integrity: sha512-+eI5bZb1bx/NfNLp9xZ/N9Muaf0ggFu3bMJdwDFZyHzB6+h5CECQTFobJ1RXoZit5jd55ztjD08ZLz+QB/qSJw==}
 
   vite-plugin-vue-devtools@8.0.2:
     resolution: {integrity: sha512-1069qvMBcyAu3yXQlvYrkwoyLOk0lSSR/gTKy/vy+Det7TXnouGei6ZcKwr5TIe938v/14oLlp0ow6FSJkkORA==}
@@ -11779,6 +11785,8 @@ snapshots:
       workbox-window: 7.3.0
     transitivePeerDependencies:
       - supports-color
+
+  vite-plugin-splash-screen@0.2.1: {}
 
   vite-plugin-vue-devtools@8.0.2(rolldown-vite@7.1.16(@types/node@24.7.2)(esbuild@0.25.10)(jiti@2.6.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))(vue@3.5.22(typescript@5.9.3)):
     dependencies:
