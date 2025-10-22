@@ -177,7 +177,8 @@ services:
       EMBEDDING_MODEL: "text-embedding-3-small"
       EMBEDDING_DIMENSION: "1536"
     depends_on:
-      - pgvector
+      pgvector:
+        condition: service_healthy
 
   pgvector:
     image: pgvector/pgvector:pg16
@@ -189,6 +190,12 @@ services:
       - pgvector-data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "psql -U postgres -c 'CREATE EXTENSION IF NOT EXISTS vector; SELECT 1;'"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 volumes:
   telegram-search-data:
