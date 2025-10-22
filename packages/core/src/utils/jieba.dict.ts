@@ -2,8 +2,8 @@
 import { Buffer } from 'buffer'
 import fs from 'node:fs'
 
+import { useLogger } from '@guiiai/logg'
 import { getDataPath } from '@tg-search/common/node/path'
-import { useLogger } from '@unbird/logg'
 import path from 'pathe'
 
 const DICT_URL = 'https://github.com/fxsjy/jieba/raw/master/extra_dict/dict.txt.small'

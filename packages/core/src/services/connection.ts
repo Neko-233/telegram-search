@@ -5,9 +5,8 @@ import type { StringSession } from 'telegram/sessions'
 
 import type { CoreContext } from '../context'
 
-import { updateConfig, useConfig } from '@tg-search/common'
-import { useLogger } from '@unbird/logg'
-import { isBrowser } from '@unbird/logg/utils'
+import { useLogger } from '@guiiai/logg'
+import { isBrowser, updateConfig, useConfig } from '@tg-search/common'
 import { Err, Ok } from '@unbird/result'
 import { Api, TelegramClient } from 'telegram'
 

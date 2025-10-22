@@ -1,5 +1,5 @@
+import type { Logger } from '@guiiai/logg'
 import type { Config } from '@tg-search/common'
-import type { Logger } from '@unbird/logg'
 import type { drizzle as drizzlePg } from 'drizzle-orm/postgres-js'
 
 import { migrate as migratePg } from '@proj-airi/drizzle-orm-browser-migrator/pg'

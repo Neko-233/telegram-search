@@ -3,8 +3,8 @@ import type { Api } from 'telegram'
 import type { CoreContext } from '../context'
 import type { MessageResolverRegistryFn } from '../message-resolvers'
 
+import { useLogger } from '@guiiai/logg'
 import { useConfig } from '@tg-search/common'
-import { useLogger } from '@unbird/logg'
 
 import { convertToCoreMessage } from '../utils/message'
 

@@ -1,5 +1,5 @@
 import type { Results } from '@electric-sql/pglite'
-import type { Logger } from '@unbird/logg'
+import type { Logger } from '@guiiai/logg'
 import type { drizzle as drizzlePglite } from 'drizzle-orm/pglite'
 
 import { IdbFs, PGlite } from '@electric-sql/pglite'

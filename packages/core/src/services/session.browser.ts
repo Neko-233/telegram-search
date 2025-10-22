@@ -2,7 +2,7 @@ import type { Result } from '@unbird/result'
 
 import type { CoreContext } from '../context'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 import { Err, Ok } from '@unbird/result'
 import { StringSession } from 'telegram/sessions'
 

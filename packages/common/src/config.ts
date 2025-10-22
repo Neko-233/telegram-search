@@ -1,12 +1,12 @@
 import type { Config, ProxyConfig } from './config-schema'
 import type { RuntimeFlags } from './flags'
 
-import { useLogger } from '@unbird/logg'
-import { isBrowser } from '@unbird/logg/utils'
+import { useLogger } from '@guiiai/logg'
 import defu from 'defu'
 import { safeParse } from 'valibot'
 
 import { configSchema, generateDefaultConfig } from './config-schema'
+import { isBrowser } from './is-browser'
 import { parseProxyUrl } from './proxy-url-parser'
 
 let config: Config

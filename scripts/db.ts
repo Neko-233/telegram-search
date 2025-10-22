@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 import process from 'node:process'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 
 import { getDatabaseDSN, initConfig, parseEnvFlags, useConfig } from '../packages/common/src'
 

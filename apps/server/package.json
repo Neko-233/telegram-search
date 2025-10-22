@@ -13,10 +13,10 @@
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.3.10",
+    "@guiiai/logg": "catalog:",
     "@node-rs/jieba": "^2.0.1",
     "@tg-search/common": "workspace:*",
     "@tg-search/core": "workspace:*",
-    "@unbird/logg": "catalog:",
     "h3": "^1.15.4",
     "listhen": "^1.9.0"
   },

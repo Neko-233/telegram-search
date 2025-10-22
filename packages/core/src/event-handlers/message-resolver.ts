@@ -1,7 +1,7 @@
 import type { CoreContext } from '../context'
 import type { MessageResolverService } from '../services/message-resolver'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 import pLimit from 'p-limit'
 
 import { MESSAGE_PROCESS_LIMIT } from '../constants'

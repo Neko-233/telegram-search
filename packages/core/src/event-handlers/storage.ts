@@ -3,7 +3,7 @@ import type { DBRetrievalMessages } from '../models'
 import type { CoreDialog } from '../services'
 import type { CoreMessage } from '../utils/message'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 
 import { convertToCoreRetrievalMessages, fetchChats, fetchMessageContextWithPhotos, fetchMessagesWithPhotos, getChatMessagesStats, recordChats, recordMessagesWithMedia, retrieveMessages } from '../models'
 import { embedContents } from '../utils/embed'

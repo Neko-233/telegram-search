@@ -3,7 +3,7 @@ import type { CorePagination } from '@tg-search/common'
 import type { CoreContext } from '../context'
 import type { CoreMessage } from '../utils/message'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 import { Err, Ok } from '@unbird/result'
 import { Api } from 'telegram'
 

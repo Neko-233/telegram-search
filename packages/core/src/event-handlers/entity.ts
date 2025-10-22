@@ -1,7 +1,7 @@
 import type { CoreContext } from '../context'
 import type { EntityService } from '../services/entity'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 
 export function registerEntityEventHandlers(ctx: CoreContext) {
   const { emitter } = ctx

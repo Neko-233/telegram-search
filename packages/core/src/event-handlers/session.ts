@@ -1,7 +1,7 @@
 import type { CoreContext } from '../context'
 import type { SessionService } from '../services'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 
 export function registerSessionEventHandlers(ctx: CoreContext) {
   const { emitter } = ctx

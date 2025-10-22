@@ -1,7 +1,7 @@
 import type { CoreContext } from '../context'
 import type { DialogService } from '../services'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 
 export function registerDialogEventHandlers(ctx: CoreContext) {
   const { emitter } = ctx

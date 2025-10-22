@@ -12,7 +12,7 @@ import type { MessageResolverEventFromCore, MessageResolverEventToCore } from '.
 import type { StorageEventFromCore, StorageEventToCore } from './services/storage'
 import type { TakeoutEventFromCore, TakeoutEventToCore } from './services/takeout'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 import { EventEmitter } from 'eventemitter3'
 
 export type FromCoreEvent = ClientInstanceEventFromCore

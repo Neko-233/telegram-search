@@ -2,7 +2,7 @@ import type { CorePagination } from '@tg-search/common'
 
 import type { DBRetrievalMessages } from './message'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 import { and, eq, sql } from 'drizzle-orm'
 
 import { withDb } from '../../db'

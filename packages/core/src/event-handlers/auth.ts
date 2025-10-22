@@ -1,7 +1,7 @@
 import type { CoreContext } from '../context'
 import type { ConnectionService, SessionService } from '../services'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 
 export function registerBasicEventHandlers(ctx: CoreContext) {
   const { emitter } = ctx

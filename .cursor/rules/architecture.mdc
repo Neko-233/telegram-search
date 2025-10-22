@@ -43,7 +43,7 @@ alwaysApply: true
   - 组合式函数：[packages/client/src/composables](mdc:packages/client/src/composables)
 
 - **[packages/common](mdc:packages/common)**: 共享工具
-  - 日志封装：使用 @unbird/logg
+  - 日志封装：使用 @guiiai/logg
   - 通用工具函数
 
 ## 核心架构模式
@@ -163,12 +163,12 @@ const client = ctx.getClient()
 
 ## 日志系统
 
-使用 @unbird/logg，在 [packages/common](mdc:packages/common) 封装。
+使用 @guiiai/logg，在 [packages/common](mdc:packages/common) 封装。
 
 ### 使用方式
 
 ```typescript
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 
 // 基本日志
 useLogger().log('Message')

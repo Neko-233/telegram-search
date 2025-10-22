@@ -6,12 +6,12 @@ settings:
 
 catalogs:
   default:
+    '@guiiai/logg':
+      specifier: ^1.2.5-beta.2
+      version: 1.2.5-beta.2
     '@unbird/eslint-config':
       specifier: ^1.0.2
       version: 1.0.2
-    '@unbird/logg':
-      specifier: ^1.1.3
-      version: 1.1.3
     '@unbird/result':
       specifier: ^1.1.1
       version: 1.1.1
@@ -36,6 +36,9 @@ importers:
         specifier: ^1.0.1
         version: 1.0.1(unocss-preset-animations@1.3.0(@unocss/preset-wind3@66.5.3)(unocss@66.5.3(postcss@8.5.6)(rolldown-vite@7.1.16(@types/node@24.7.2)(esbuild@0.25.10)(jiti@2.6.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))))(unocss@66.5.3(postcss@8.5.6)(rolldown-vite@7.1.16(@types/node@24.7.2)(esbuild@0.25.10)(jiti@2.6.1)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1)))
     devDependencies:
+      '@guiiai/logg':
+        specifier: 'catalog:'
+        version: 1.2.5-beta.2
       '@proj-airi/unocss-preset-chromatic':
         specifier: ^1.0.2
         version: 1.0.2
@@ -45,9 +48,6 @@ importers:
       '@unbird/eslint-config':
         specifier: 'catalog:'
         version: 1.0.2(@unocss/eslint-plugin@66.5.3(eslint@9.37.0(jiti@2.6.1))(typescript@5.9.3))(@vue/compiler-sfc@3.5.22)(eslint@9.37.0(jiti@2.6.1))(typescript@5.9.3)(vitest@3.2.4(@types/debug@4.1.12)(@types/node@24.7.2)(jiti@2.6.1)(lightningcss@1.30.2)(terser@5.44.0)(tsx@4.20.6)(yaml@2.8.1))
-      '@unbird/logg':
-        specifier: 'catalog:'
-        version: 1.1.3
       bumpp:
         specifier: ^10.3.1
         version: 10.3.1
@@ -93,6 +93,9 @@ importers:
       '@electric-sql/pglite':
         specifier: ^0.3.10
         version: 0.3.10
+      '@guiiai/logg':
+        specifier: 'catalog:'
+        version: 1.2.5-beta.2
       '@node-rs/jieba':
         specifier: ^2.0.1
         version: 2.0.1
@@ -102,9 +105,6 @@ importers:
       '@tg-search/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@unbird/logg':
-        specifier: 'catalog:'
-        version: 1.1.3
       h3:
         specifier: ^1.15.4
         version: 1.15.4
@@ -288,9 +288,9 @@ importers:
 
   packages/common:
     dependencies:
-      '@unbird/logg':
+      '@guiiai/logg':
         specifier: 'catalog:'
-        version: 1.1.3
+        version: 1.2.5-beta.2
       '@vue/reactivity':
         specifier: ^3.5.22
         version: 3.5.22
@@ -315,6 +315,9 @@ importers:
       '@electric-sql/pglite':
         specifier: ^0.3.10
         version: 0.3.10
+      '@guiiai/logg':
+        specifier: 'catalog:'
+        version: 1.2.5-beta.2
       '@moeru/std':
         specifier: 0.1.0-beta.10
         version: 0.1.0-beta.10
@@ -330,9 +333,6 @@ importers:
       '@unbird/eventa':
         specifier: ^0.2.0
         version: 0.2.0
-      '@unbird/logg':
-        specifier: 'catalog:'
-        version: 1.1.3
       '@unbird/result':
         specifier: 'catalog:'
         version: 1.1.1
@@ -1404,6 +1404,9 @@ packages:
   '@guiiai/logg@1.1.0':
     resolution: {integrity: sha512-phmHJQFGFy75h0bAQ++/hg+PJ1DDzh3/BSl5akS/i+jXOsl/pVO+Hb5ZxMEWu0hrnZwutMlilc8AqJErRYHpyA==}
 
+  '@guiiai/logg@1.2.5-beta.2':
+    resolution: {integrity: sha512-IdyliZZEWOOcNpWyTX9sae8isobCMaxz9EUDuROUsk/DsreNk7uwPiok313wLtN1K8hzGYBGGJsqm0kM6L5zVA==}
+
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
     engines: {node: '>=18.18.0'}
@@ -2259,9 +2262,6 @@ packages:
         optional: true
       web-worker:
         optional: true
-
-  '@unbird/logg@1.1.3':
-    resolution: {integrity: sha512-tNrn4FcH6A7BGqkA9u8xpj47/r6mbnPtd9Wyk8eN9S1+PD1QCuxh7L/ZrYcPuvCaEouHkmizNk21iBxpKEK3oA==}
 
   '@unbird/result@1.1.1':
     resolution: {integrity: sha512-hYI5EhbNAIafphxS9wjyvLJXV6s+7ZPI0PeaEfNJa7E7I0nGJvqE2eSvoKy2XZg+M4y+sSOAf49ine0slxsX3w==}
@@ -4676,9 +4676,6 @@ packages:
     resolution: {integrity: sha512-bCgsFI+GeGWPAvAiUv63ZorMeif3/U0zaXABGJbOWt5OH2KCaPHF6S+0ok4aqM9RuIPGyZdx9tR9l13PsW4AYQ==}
     engines: {node: '>=14.13.0'}
 
-  path-browserify-esm@1.0.6:
-    resolution: {integrity: sha512-9nUwYvvu/yq1PYrUyYCihNWmpzacaRYF6gGbjLWErrZ4MRDWyfPN7RpE8E7tsw8eqBU/rr7mcoTXbS+Vih8uUA==}
-
   path-browserify@1.0.1:
     resolution: {integrity: sha512-b7uo2UCUOYZcnF/3ID0lulOJi/bafxa1xPe7ZPsammBSpjSWQkjNxlt635YGS2MiR9GjvuXCtz2emr3jbsz98g==}
 
@@ -7054,6 +7051,11 @@ snapshots:
       error-stack-parser: 2.1.4
       pathe: 2.0.3
 
+  '@guiiai/logg@1.2.5-beta.2':
+    dependencies:
+      error-stack-parser: 2.1.4
+      pathe: 2.0.3
+
   '@humanfs/core@0.19.1': {}
 
   '@humanfs/node@0.16.7':
@@ -7776,12 +7778,6 @@ snapshots:
     dependencies:
       nanoid: 5.1.6
       picomatch: 4.0.3
-
-  '@unbird/logg@1.1.3':
-    dependencies:
-      '@guiiai/logg': 1.1.0
-      error-stack-parser: 2.1.4
-      path-browserify-esm: 1.0.6
 
   '@unbird/result@1.1.1': {}
 
@@ -10698,8 +10694,6 @@ snapshots:
     dependencies:
       '@types/parse-path': 7.1.0
       parse-path: 7.1.0
-
-  path-browserify-esm@1.0.6: {}
 
   path-browserify@1.0.1: {}
 

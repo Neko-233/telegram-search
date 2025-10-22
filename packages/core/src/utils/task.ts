@@ -1,7 +1,7 @@
 import type { CoreEmitter } from '../context'
 import type { TakeoutTaskMetadata } from '../services/takeout'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 
 type CoreTaskType = 'takeout' | 'getMessage' | 'embed'
 

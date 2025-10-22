@@ -1,5 +1,7 @@
+export * from './circular-object'
 export * from './config'
 export * from './config-schema'
 export * from './flags'
+export * from './is-browser'
 export * from './pagination'
 export * from './retry'

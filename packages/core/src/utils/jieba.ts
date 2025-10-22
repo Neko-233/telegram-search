@@ -1,6 +1,6 @@
+import { useLogger } from '@guiiai/logg'
 import { Jieba } from '@node-rs/jieba'
-import { useLogger } from '@unbird/logg'
-import { isBrowser } from '@unbird/logg/utils'
+import { isBrowser } from '@tg-search/common'
 
 let _jieba: Jieba | undefined
 

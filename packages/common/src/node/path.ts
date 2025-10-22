@@ -3,7 +3,7 @@ import type { Config } from '../config-schema'
 import fs from 'node:fs'
 import process from 'node:process'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 import { dirname, resolve } from 'pathe'
 
 import { DatabaseType } from '../config-schema'

@@ -5,7 +5,7 @@ import type { EntityLike } from 'telegram/define'
 import type { CoreContext } from '../context'
 import type { CoreTask } from '../utils/task'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 import { Err, Ok } from '@unbird/result'
 import bigInt from 'big-integer'
 import { Api } from 'telegram'

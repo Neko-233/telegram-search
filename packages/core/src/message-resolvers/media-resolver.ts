@@ -8,7 +8,7 @@ import type { CoreMessage } from '../utils/message'
 // eslint-disable-next-line unicorn/prefer-node-protocol
 import { Buffer } from 'buffer'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 import { fileTypeFromBuffer } from 'file-type'
 
 import { findPhotoByFileId, findStickerByFileId } from '../models'

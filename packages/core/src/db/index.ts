@@ -1,11 +1,10 @@
+import type { Logger } from '@guiiai/logg'
 import type { Config } from '@tg-search/common'
-import type { Logger } from '@unbird/logg'
 
 import type { PostgresDB } from './pg'
 import type { PgliteDB } from './pglite'
 
-import { DatabaseType } from '@tg-search/common'
-import { isBrowser } from '@unbird/logg/utils'
+import { DatabaseType, isBrowser } from '@tg-search/common'
 import { Err, Ok } from '@unbird/result'
 
 export type CoreDB = PostgresDB | PgliteDB

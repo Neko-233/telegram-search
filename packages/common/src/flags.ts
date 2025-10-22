@@ -1,6 +1,6 @@
 import type { DatabaseType } from './config-schema'
 
-import { LoggerFormat, LoggerLevel } from '@unbird/logg'
+import { LoggerFormat, LoggerLevel } from '@guiiai/logg'
 
 import { EmbeddingDimension, EmbeddingProvider } from './config-schema'
 

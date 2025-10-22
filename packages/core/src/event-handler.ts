@@ -3,8 +3,8 @@ import type { Config } from '@tg-search/common'
 import type { CoreContext } from './context'
 import type { SessionService } from './services/session'
 
-import { useLogger } from '@unbird/logg'
-import { isBrowser } from '@unbird/logg/utils'
+import { useLogger } from '@guiiai/logg'
+import { isBrowser } from '@tg-search/common'
 
 import { useService } from './context'
 import { registerBasicEventHandlers } from './event-handlers/auth'

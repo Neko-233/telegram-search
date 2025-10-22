@@ -226,7 +226,7 @@ graph TB
   - **Composables**: Reusable Vue composition functions
 
 - **`packages/common`**: Shared utilities:
-  - **Logger**: Centralized logging using @unbird/logg
+  - **Logger**: Centralized logging using @guiiai/logg
   - **Utilities**: Common helper functions
 
 - **`apps/server`**: WebSocket server:

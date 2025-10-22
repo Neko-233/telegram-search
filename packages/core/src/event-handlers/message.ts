@@ -1,7 +1,7 @@
 import type { CoreContext } from '../context'
 import type { MessageService } from '../services'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 import { Api } from 'telegram/tl'
 
 import { MESSAGE_PROCESS_BATCH_SIZE } from '../constants'

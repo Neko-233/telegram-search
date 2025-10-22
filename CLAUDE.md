@@ -134,10 +134,10 @@ const client = ctx.getClient()
 
 ### Logging
 
-Use `@unbird/logg` wrapped in `packages/common`:
+Use `@guiiai/logg` wrapped in `packages/common`:
 
 ```typescript
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 
 useLogger().log('Basic message')
 useLogger().withFields({ userId: 123 }).log('With context')

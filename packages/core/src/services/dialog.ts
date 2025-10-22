@@ -3,8 +3,8 @@ import type { Dialog } from 'telegram/tl/custom/dialog'
 
 import type { CoreContext } from '../context'
 
-import { useLogger } from '@unbird/logg'
-import { circularObject } from '@unbird/logg/utils'
+import { useLogger } from '@guiiai/logg'
+import { circularObject } from '@tg-search/common'
 import { Err, Ok } from '@unbird/result'
 
 export type DialogType = 'user' | 'group' | 'channel'

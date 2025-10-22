@@ -19,7 +19,7 @@
     }
   },
   "dependencies": {
-    "@unbird/logg": "catalog:",
+    "@guiiai/logg": "catalog:",
     "@vue/reactivity": "^3.5.22",
     "defu": "^6.1.4",
     "pathe": "^2.0.3",

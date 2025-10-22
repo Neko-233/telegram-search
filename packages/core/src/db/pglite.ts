@@ -1,5 +1,5 @@
+import type { Logger } from '@guiiai/logg'
 import type { Config } from '@tg-search/common'
-import type { Logger } from '@unbird/logg'
 import type { drizzle as drizzlePglite } from 'drizzle-orm/pglite'
 
 import fs from 'node:fs'

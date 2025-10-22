@@ -4,9 +4,9 @@ import type { WsEventToClient, WsEventToClientData, WsEventToServer, WsEventToSe
 import type { ClientEventHandlerMap, ClientEventHandlerQueueMap } from '../event-handlers'
 import type { SessionContext } from '../stores/useAuth'
 
+import { initLogger, LoggerFormat, LoggerLevel, useLogger } from '@guiiai/logg'
 import { initConfig, useConfig } from '@tg-search/common'
 import { createCoreInstance, initDrizzle } from '@tg-search/core'
-import { initLogger, LoggerLevel, useLogger } from '@unbird/logg'
 import { useLocalStorage } from '@vueuse/core'
 import defu from 'defu'
 import { acceptHMRUpdate, defineStore } from 'pinia'
@@ -44,7 +44,7 @@ export const useCoreBridgeStore = defineStore('core-bridge', () => {
     if (!ctx) {
       // TODO: use flags
       const isDebug = !!import.meta.env.VITE_DEBUG
-      initLogger(isDebug ? LoggerLevel.Debug : LoggerLevel.Verbose)
+      initLogger(isDebug ? LoggerLevel.Debug : LoggerLevel.Verbose, LoggerFormat.Pretty)
 
       try {
         const config = useConfig()

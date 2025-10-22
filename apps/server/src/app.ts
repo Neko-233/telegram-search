@@ -3,9 +3,9 @@ import type { CrossWSOptions } from 'listhen'
 
 import process from 'node:process'
 
+import { initLogger, useLogger } from '@guiiai/logg'
 import { initConfig, parseEnvFlags } from '@tg-search/common'
 import { initDrizzle } from '@tg-search/core'
-import { initLogger, useLogger } from '@unbird/logg'
 import { createApp, createRouter, defineEventHandler, toNodeListener } from 'h3'
 import { listen } from 'listhen'
 
@@ -84,8 +84,8 @@ function configureServer(logger: ReturnType<typeof useLogger>, flags: RuntimeFla
 
 async function bootstrap() {
   const flags = parseEnvFlags(process.env as Record<string, string>)
-  initLogger()
-  const logger = useLogger()
+  initLogger(flags.logLevel, flags.logFormat)
+  const logger = useLogger().useGlobalConfig()
   const config = await initConfig(flags)
 
   try {

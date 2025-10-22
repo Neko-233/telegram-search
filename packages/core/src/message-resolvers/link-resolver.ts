@@ -1,7 +1,7 @@
 import type { MessageResolver, MessageResolverOpts } from '.'
 import type { CoreMessage } from '../utils/message'
 
-import { useLogger } from '@unbird/logg'
+import { useLogger } from '@guiiai/logg'
 import { Ok } from '@unbird/result'
 
 export function createLinkResolver(): MessageResolver {
