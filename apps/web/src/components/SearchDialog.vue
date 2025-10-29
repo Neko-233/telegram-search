@@ -95,7 +95,7 @@ watch(keywordDebounced, (newKeyword) => {
               </div>
               <input
                 v-model="keyword"
-                class="h-12 w-full border-0 rounded-xl bg-muted/50 px-4 pl-12 pr-4 text-base transition-all duration-200 md:h-14 focus:bg-muted/80 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-offset-0 focus:ring-ring"
+                class="h-12 w-full border-0 rounded-xl bg-muted/50 px-4 pl-12 pr-4 text-base transition-all duration-200 md:h-14 focus:bg-muted/80 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 :placeholder="t('searchDialog.searchMessages')"
                 autofocus
               >
