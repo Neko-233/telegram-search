@@ -28,7 +28,7 @@
   },
   "login": {
     "code": "验证码",
-    "codeDescription": "请输入telegram内的验证码",
+    "codeDescription": "请输入 Telegram 内的验证码",
     "complete": "完成",
     "completeDescription": "登录成功！",
     "enterHome": "进入主页",
