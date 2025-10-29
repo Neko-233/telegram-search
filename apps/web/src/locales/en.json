@@ -28,7 +28,7 @@
   },
   "login": {
     "code": "Code",
-    "codeDescription": "Please enter the verification code you received",
+    "codeDescription": "Please enter the verification code from Telegram",
     "complete": "Complete",
     "completeDescription": "Login successful!",
     "enterHome": "Go to Home",
@@ -46,8 +46,8 @@
     "twoFactorPassword": "Two-factor Password",
     "twoFactorPasswordPlaceholder": "Enter your two-factor password",
     "verificationCode": "Verification Code",
-    "verificationCodeDescription": "Please enter the verification code you received",
-    "verificationCodePlaceholder": "Enter verification code",
+    "verificationCodeDescription": "",
+    "verificationCodePlaceholder": "",
     "verify": "Verify"
   },
   "loginPromptBanner": {
