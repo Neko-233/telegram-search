@@ -44,10 +44,7 @@
     "processing": "Processing...",
     "telegramLogin": "Telegram Login",
     "twoFactorPassword": "Two-factor Password",
-    "twoFactorPasswordPlaceholder": "Enter your two-factor password",
     "verificationCode": "Verification Code",
-    "verificationCodeDescription": "",
-    "verificationCodePlaceholder": "",
     "verify": "Verify"
   },
   "loginPromptBanner": {

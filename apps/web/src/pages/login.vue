@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useAuthStore, useBridgeStore } from '@tg-search/client'
 import { storeToRefs } from 'pinia'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
@@ -55,12 +55,12 @@ watch(isLoggedIn, (value) => {
   }
 })
 
-const steps = [
+const steps = computed(() => [
   { step: 1, value: 'phone', title: t('login.phone'), description: t('login.phoneDescription') },
   { step: 2, value: 'code', title: t('login.code'), description: t('login.codeDescription') },
   { step: 3, value: 'password', title: t('login.password'), description: t('login.passwordDescription') },
   { step: 4, value: 'complete', title: t('login.complete'), description: t('login.completeDescription') },
-]
+])
 
 function redirectRoot() {
   toast.success(t('login.loginSuccess'))
@@ -132,14 +132,10 @@ async function handleLogin() {
             id="verificationCode"
             v-model="state.verificationCode"
             type="text"
-            :placeholder="t('login.verificationCodePlaceholder')"
             class="w-full border rounded-xl bg-background px-5 py-4 text-xl transition disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-ring"
             required
             :disabled="authStore.auth.isLoading"
           >
-          <p class="mt-2 text-sm text-muted-foreground">
-            {{ t('login.verificationCodeDescription') }}
-          </p>
         </div>
         <button
           type="submit"
@@ -159,7 +155,6 @@ async function handleLogin() {
             id="twoFactorPassword"
             v-model="state.twoFactorPassword"
             type="password"
-            :placeholder="t('login.twoFactorPasswordPlaceholder')"
             class="w-full border rounded-xl bg-background px-5 py-4 text-xl transition disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-ring"
             required
             :disabled="authStore.auth.isLoading"

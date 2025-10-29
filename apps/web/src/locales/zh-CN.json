@@ -44,10 +44,7 @@
     "processing": "处理中...",
     "telegramLogin": "Telegram 登录",
     "twoFactorPassword": "两步验证密码",
-    "twoFactorPasswordPlaceholder": "请输入两步验证密码",
     "verificationCode": "验证码",
-    "verificationCodeDescription": "",
-    "verificationCodePlaceholder": "",
     "verify": "验证"
   },
   "loginPromptBanner": {
