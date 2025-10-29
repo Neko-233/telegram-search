@@ -28,7 +28,7 @@
   },
   "login": {
     "code": "验证码",
-    "codeDescription": "请输入收到的验证码",
+    "codeDescription": "请输入 Telegram 内的验证码",
     "complete": "完成",
     "completeDescription": "登录成功！",
     "enterHome": "进入主页",
@@ -44,10 +44,7 @@
     "processing": "处理中...",
     "telegramLogin": "Telegram 登录",
     "twoFactorPassword": "两步验证密码",
-    "twoFactorPasswordPlaceholder": "请输入两步验证密码",
     "verificationCode": "验证码",
-    "verificationCodeDescription": "请输入您收到的验证码",
-    "verificationCodePlaceholder": "请输入验证码",
     "verify": "验证"
   },
   "loginPromptBanner": {
