@@ -11,17 +11,29 @@ const props = defineProps<{
   chats: CoreDialog[]
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const selectedChats = defineModel<number[]>('selectedChats', {
   required: true,
 })
 
-const chatTypeOptions = ref([
-  { label: t('chatSelector.user'), value: 'user' },
-  { label: t('chatSelector.group'), value: 'group' },
-  { label: t('chatSelector.channel'), value: 'channel' },
-])
+/**
+ * Build chat type options localized by current language.
+ * Returns localized labels with corresponding values for the dropdown.
+ */
+function getLocalizedChatTypeOptions(): Array<{ label: string; value: string }> {
+  return [
+    { label: t('chatSelector.user'), value: 'user' },
+    { label: t('chatSelector.group'), value: 'group' },
+    { label: t('chatSelector.channel'), value: 'channel' },
+  ]
+}
+
+// Use computed so options react to language changes; depend on locale explicitly.
+const chatTypeOptions = computed(() => {
+  void locale.value
+  return getLocalizedChatTypeOptions()
+})
 const selectedType = ref<string>('user')
 const searchQuery = ref('')
 
