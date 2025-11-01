@@ -21,7 +21,7 @@ const selectedChats = defineModel<number[]>('selectedChats', {
  * Build chat type options localized by current language.
  * Returns localized labels with corresponding values for the dropdown.
  */
-function getLocalizedChatTypeOptions(): Array<{ label: string; value: string }> {
+function getLocalizedChatTypeOptions(): Array<{ label: string, value: string }> {
   return [
     { label: t('chatSelector.user'), value: 'user' },
     { label: t('chatSelector.group'), value: 'group' },

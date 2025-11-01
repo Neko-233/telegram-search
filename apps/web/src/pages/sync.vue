@@ -299,7 +299,7 @@ watch(currentTaskProgress, (progress) => {
               <p class="mt-1 text-sm text-muted-foreground">
                 {{ t('sync.syncPrompt') }}
               </p>
-          </div>
+            </div>
 
             <div class="flex items-center gap-3">
               <div class="flex items-center gap-2 rounded-full bg-muted px-4 py-2">
@@ -309,7 +309,7 @@ watch(currentTaskProgress, (progress) => {
                 </span>
               </div>
               <button
-                class="flex items-center gap-2 rounded-full bg-muted px-4 py-2 appearance-none"
+                class="flex appearance-none items-center gap-2 rounded-full bg-muted px-4 py-2"
                 :disabled="isSelectAllDisabled"
                 :class="{ 'opacity-50 cursor-not-allowed': isSelectAllDisabled }"
                 @click="handleSelectAll"
@@ -332,11 +332,11 @@ watch(currentTaskProgress, (progress) => {
   </div>
 
   <!-- Select All Reminder Dialog -->
-  <Dialog v-model="isSelectAllDialogOpen" maxWidth="32rem" persistent>
+  <Dialog v-model="isSelectAllDialogOpen" max-width="32rem" persistent>
     <div class="space-y-5">
       <div class="flex items-start gap-4">
         <div
-          class="flex h-12 w-12 items-center justify-center rounded-xl ring-1"
+          class="h-12 w-12 flex items-center justify-center rounded-xl ring-1"
           :class="isSelectAllWarning ? 'bg-destructive/10 ring-destructive/30' : 'bg-primary/10 ring-primary/30'"
         >
           <span
