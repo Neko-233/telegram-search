@@ -59,7 +59,7 @@ watch(keywordDebounced, (newKeyword) => {
           <span class="i-lucide-search absolute left-4 h-5 w-5 text-muted-foreground" />
           <input
             v-model="keyword"
-            class="h-12 w-full border rounded-xl bg-background px-4 py-3 pl-12 pr-4 text-sm shadow-sm transition-all duration-200 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring"
+            class="h-12 w-full border rounded-xl bg-background px-4 py-3 pl-12 pr-4 text-sm shadow-sm transition-all duration-200 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             :placeholder="t('search.searchMessages')"
           >
         </div>
