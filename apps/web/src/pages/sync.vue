@@ -61,6 +61,22 @@ const isButtonDisabled = computed(() => {
 })
 
 /**
+ * Performance optimized check for whether all chats are selected
+ * Uses Set for O(1) lookup instead of O(N^2) with array.includes() for each chat
+ * This computed property is available for future use in templates or other components
+ */
+const _isAllSelected = computed(() => {
+  const allIds = chats.value.map(c => c.id)
+  if (allIds.length === 0 || selectedChats.value.length !== allIds.length) {
+    return false
+  }
+  
+  // Use Set for efficient lookup to avoid O(N^2) complexity
+  const selectedSet = new Set(selectedChats.value)
+  return allIds.every(id => selectedSet.has(id))
+})
+
+/**
  * Localize takeout task progress message.
  * Converts backend English `lastMessage` to i18n-friendly text.
  * Parses "Processed X/Y messages" and maps known status strings.
