@@ -9,6 +9,7 @@ import { toast } from 'vue-sonner'
 
 import ChatSelector from '../components/ChatSelector.vue'
 import { Button } from '../components/ui/Button'
+import Dialog from '../components/ui/Dialog.vue'
 import { Progress } from '../components/ui/Progress'
 
 const { t } = useI18n()
@@ -59,6 +60,73 @@ const errorMessage = computed(() => {
 const isButtonDisabled = computed(() => {
   return selectedChats.value.length === 0 || !isLoggedIn.value || isTaskInProgress.value
 })
+
+/**
+ * Compute disabled state for the "Select All" button.
+ * Disabled when: not logged in, a task is in progress, or no chats.
+ */
+const isSelectAllDisabled = computed(() => {
+  return !isLoggedIn.value || isTaskInProgress.value || chats.value.length === 0
+})
+
+/**
+ * Performance optimized check for whether all chats are selected.
+ * Uses Set for O(1) lookup instead of O(N^2) with array.includes() for each chat.
+ * Returns true when selectedChats covers all chat IDs.
+ */
+/**
+ * Performance optimized computed property for all chat IDs.
+ * Follows DRY (Don't Repeat Yourself) principle by centralizing the mapping logic.
+ */
+const allChatIds = computed(() => chats.value.map(c => c.id))
+
+const isAllSelected = computed(() => {
+  const allIds = allChatIds.value
+  if (allIds.length === 0 || selectedChats.value.length !== allIds.length) {
+    return false
+  }
+
+  // Use Set for efficient lookup to avoid O(N^2) complexity
+  const selectedSet = new Set(selectedChats.value)
+  return allIds.every(id => selectedSet.has(id))
+})
+
+/**
+ * Threshold for showing a warning toast when selecting all chats.
+ * When the number of chats exceeds this value, a warning toast is shown.
+ */
+const SELECT_ALL_WARNING_THRESHOLD = 50
+
+/**
+ * Dialog state for "Select All" reminder.
+ * - isSelectAllDialogOpen: controls dialog visibility
+ * - selectAllCount: holds current total chats count for i18n message
+ * - isSelectAllWarning: whether to show warning style (count >= threshold)
+ */
+const isSelectAllDialogOpen = ref(false)
+const selectAllCount = ref<number>(0)
+const isSelectAllWarning = ref<boolean>(false)
+
+/**
+ * Handle "Select All" click with toggle behavior.
+ * If all chats are selected, clear selection; otherwise select all.
+ * When selecting all, open a dialog to remind that syncing many chats
+ * may take a long time.
+ */
+function handleSelectAll() {
+  const allIds = allChatIds.value
+  const allSelected = isAllSelected.value
+
+  selectedChats.value = allSelected ? [] : allIds
+
+  // Show prompt only when switching to "Select All"
+  if (!allSelected) {
+    const count = allIds.length
+    selectAllCount.value = count
+    isSelectAllWarning.value = count >= SELECT_ALL_WARNING_THRESHOLD
+    isSelectAllDialogOpen.value = true
+  }
+}
 
 /**
  * Localize takeout task progress message.
@@ -276,11 +344,22 @@ watch(currentTaskProgress, (progress) => {
               </p>
             </div>
 
-            <div class="flex items-center gap-2 rounded-full bg-muted px-4 py-2">
-              <span class="i-lucide-check-circle h-4 w-4 text-primary" />
-              <span class="text-sm text-foreground font-medium">
-                {{ t('sync.selectedChats', { count: selectedChats.length }) }}
-              </span>
+            <div class="flex items-center gap-3">
+              <div class="flex items-center gap-2 rounded-full bg-muted px-4 py-2">
+                <span class="i-lucide-check-circle h-4 w-4 text-primary" />
+                <span class="text-sm text-foreground font-medium">
+                  {{ t('sync.selectedChats', { count: selectedChats.length }) }}
+                </span>
+              </div>
+              <button
+                class="flex appearance-none items-center gap-2 rounded-full bg-muted px-4 py-2"
+                :disabled="isSelectAllDisabled"
+                :class="{ 'opacity-50 cursor-not-allowed': isSelectAllDisabled }"
+                @click="handleSelectAll"
+              >
+                <span class="i-lucide-check-square h-4 w-4 text-primary" />
+                <span class="text-sm text-foreground font-medium">{{ isAllSelected ? t('sync.deselectAll') : t('sync.selectAll') }}</span>
+              </button>
             </div>
           </div>
 
@@ -294,4 +373,40 @@ watch(currentTaskProgress, (progress) => {
       </div>
     </div>
   </div>
+
+  <!-- Select All Reminder Dialog -->
+  <Dialog v-model="isSelectAllDialogOpen" max-width="32rem" persistent>
+    <div class="space-y-5">
+      <div class="flex items-start gap-4">
+        <div
+          class="h-12 w-12 flex items-center justify-center rounded-xl ring-1"
+          :class="isSelectAllWarning ? 'bg-destructive/10 ring-destructive/30' : 'bg-primary/10 ring-primary/30'"
+        >
+          <span
+            :class="isSelectAllWarning ? 'i-lucide-alert-triangle text-destructive' : 'i-lucide-info text-primary'"
+            class="h-6 w-6"
+          />
+        </div>
+        <div class="flex-1">
+          <p class="text-base text-foreground font-medium leading-relaxed">
+            {{ isSelectAllWarning
+              ? t('sync.selectAllWarning', { count: selectAllCount })
+              : t('sync.selectAllInfo', { count: selectAllCount })
+            }}
+          </p>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2">
+        <Button
+          icon="i-lucide-x"
+          size="sm"
+          variant="outline"
+          @click="isSelectAllDialogOpen = false"
+        >
+          {{ t('sync.dismiss') }}
+        </Button>
+      </div>
+    </div>
+  </Dialog>
 </template>
