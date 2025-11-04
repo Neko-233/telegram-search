@@ -161,7 +161,7 @@ export const useCoreBridgeStore = defineStore('core-bridge', () => {
       try {
         fnQueue.forEach((inQueueFn) => {
           inQueueFn(deepClone(event.data) as WsEventToClientData<keyof WsEventToClient>)
-          fnQueue.pop()
+          fnQueue.shift()
         })
       }
       catch (error) {
