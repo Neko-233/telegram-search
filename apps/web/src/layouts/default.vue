@@ -313,13 +313,13 @@ watch(chats, async (list) => {
             :class="{ 'cursor-pointer': !websocketStore.getActiveSession()?.isConnected }"
             @click="handleAvatarClick"
           >
-          <div class="h-8 w-8 flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
-            <Avatar
-              :src="userAvatarSrc"
-              :name="websocketStore.getActiveSession()?.me?.name"
-              size="sm"
-            />
-          </div>
+            <div class="h-8 w-8 flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
+              <Avatar
+                :src="userAvatarSrc"
+                :name="websocketStore.getActiveSession()?.me?.name"
+                size="sm"
+              />
+            </div>
             <div class="min-w-0 flex flex-1 flex-col">
               <span class="truncate text-sm font-medium">{{ websocketStore.getActiveSession()?.me?.name }}</span>
               <span class="truncate text-xs text-muted-foreground">{{ websocketStore.getActiveSession()?.isConnected ? t('settings.connected') : t('settings.disconnected') }}</span>

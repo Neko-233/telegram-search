@@ -1,8 +1,8 @@
 import type { ClientRegisterEventHandler } from '.'
 
 import { useChatStore } from '../stores/useChat'
-import { prefillChatAvatarIntoStore } from '../utils/avatar-cache'
 import { useMessageStore } from '../stores/useMessage'
+import { prefillChatAvatarIntoStore } from '../utils/avatar-cache'
 
 export function registerStorageEventHandlers(
   registerEventHandler: ClientRegisterEventHandler,

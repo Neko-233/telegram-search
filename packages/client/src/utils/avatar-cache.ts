@@ -57,7 +57,8 @@ const stats: AvatarCacheStats = {
  * Returns null if IndexedDB is unavailable.
  */
 async function openDb(): Promise<IDBDatabase | null> {
-  if (dbPromise) return dbPromise
+  if (dbPromise)
+    return dbPromise
   if (typeof indexedDB === 'undefined') {
     dbPromise = Promise.resolve(null)
     return dbPromise
@@ -143,10 +144,12 @@ async function visitAll(db: IDBDatabase, visitor: (rec: AvatarCacheRecord) => vo
     const req = store.openCursor()
     req.onsuccess = async () => {
       const cursor = req.result as IDBCursorWithValue | null
-      if (!cursor) return resolve()
+      if (!cursor)
+        return resolve()
       const record = cursor.value as AvatarCacheRecord
       const shouldStop = await visitor(record)
-      if (shouldStop) return resolve()
+      if (shouldStop)
+        return resolve()
       cursor.continue()
     }
     req.onerror = () => reject(req.error)
@@ -159,7 +162,8 @@ async function visitAll(db: IDBDatabase, visitor: (rec: AvatarCacheRecord) => vo
  */
 export async function persistUserAvatar(userId: string, blob: Blob, mimeType: string): Promise<void> {
   const db = await openDb()
-  if (!db) return
+  if (!db)
+    return
   try {
     const key = await generateCacheKey(userId)
     const etag = await sha256Hex(blob)
@@ -181,7 +185,8 @@ export async function persistUserAvatar(userId: string, blob: Blob, mimeType: st
   }
   catch (err) {
     stats.failures += 1
-    if (stats.debug) console.warn('[AvatarCache] persistUserAvatar failed', err)
+    if (stats.debug)
+      console.warn('[AvatarCache] persistUserAvatar failed', err)
   }
 }
 
@@ -190,7 +195,8 @@ export async function persistUserAvatar(userId: string, blob: Blob, mimeType: st
  */
 export async function persistChatAvatar(chatId: string | number, blob: Blob, mimeType: string): Promise<void> {
   const db = await openDb()
-  if (!db) return
+  if (!db)
+    return
   try {
     const id = String(chatId)
     const key = await generateCacheKey(id)
@@ -212,7 +218,8 @@ export async function persistChatAvatar(chatId: string | number, blob: Blob, mim
   }
   catch (err) {
     stats.failures += 1
-    if (stats.debug) console.warn('[AvatarCache] persistChatAvatar failed', err)
+    if (stats.debug)
+      console.warn('[AvatarCache] persistChatAvatar failed', err)
   }
 }
 
@@ -221,9 +228,11 @@ export async function persistChatAvatar(chatId: string | number, blob: Blob, mim
  * Returns undefined if not found or expired.
  */
 export async function loadUserAvatarFromCache(userId: string | number | undefined): Promise<{ url: string, mimeType: string } | undefined> {
-  if (!userId) return undefined
+  if (!userId)
+    return undefined
   const db = await openDb()
-  if (!db) return undefined
+  if (!db)
+    return undefined
   const id = String(userId)
 
   let latest: AvatarCacheRecord | undefined
@@ -235,9 +244,11 @@ export async function loadUserAvatarFromCache(userId: string | number | undefine
       const req = index.openCursor(IDBKeyRange.only(id))
       req.onsuccess = () => {
         const cursor = req.result as IDBCursorWithValue | null
-        if (!cursor) return resolve()
+        if (!cursor)
+          return resolve()
         const rec = cursor.value as AvatarCacheRecord
-        if (!latest || rec.createdAt > latest.createdAt) latest = rec
+        if (!latest || rec.createdAt > latest.createdAt)
+          latest = rec
         cursor.continue()
       }
       req.onerror = () => reject(req.error)
@@ -245,7 +256,8 @@ export async function loadUserAvatarFromCache(userId: string | number | undefine
   }
   catch (err) {
     stats.failures += 1
-    if (stats.debug) console.warn('[AvatarCache] loadUserAvatarFromCache failed', err)
+    if (stats.debug)
+      console.warn('[AvatarCache] loadUserAvatarFromCache failed', err)
     return undefined
   }
 
@@ -264,7 +276,8 @@ export async function loadUserAvatarFromCache(userId: string | number | undefine
   }
   catch (err) {
     stats.failures += 1
-    if (stats.debug) console.warn('[AvatarCache] objectURL failed', err)
+    if (stats.debug)
+      console.warn('[AvatarCache] objectURL failed', err)
     return undefined
   }
 }
@@ -273,9 +286,11 @@ export async function loadUserAvatarFromCache(userId: string | number | undefine
  * Load latest valid chat avatar from cache and return an object URL and mimeType.
  */
 export async function loadChatAvatarFromCache(chatId: string | number | undefined): Promise<{ url: string, mimeType: string } | undefined> {
-  if (!chatId) return undefined
+  if (!chatId)
+    return undefined
   const db = await openDb()
-  if (!db) return undefined
+  if (!db)
+    return undefined
   const id = String(chatId)
 
   let latest: AvatarCacheRecord | undefined
@@ -287,9 +302,11 @@ export async function loadChatAvatarFromCache(chatId: string | number | undefine
       const req = index.openCursor(IDBKeyRange.only(id))
       req.onsuccess = () => {
         const cursor = req.result as IDBCursorWithValue | null
-        if (!cursor) return resolve()
+        if (!cursor)
+          return resolve()
         const rec = cursor.value as AvatarCacheRecord
-        if (!latest || rec.createdAt > latest.createdAt) latest = rec
+        if (!latest || rec.createdAt > latest.createdAt)
+          latest = rec
         cursor.continue()
       }
       req.onerror = () => reject(req.error)
@@ -297,7 +314,8 @@ export async function loadChatAvatarFromCache(chatId: string | number | undefine
   }
   catch (err) {
     stats.failures += 1
-    if (stats.debug) console.warn('[AvatarCache] loadChatAvatarFromCache failed', err)
+    if (stats.debug)
+      console.warn('[AvatarCache] loadChatAvatarFromCache failed', err)
     return undefined
   }
 
@@ -316,7 +334,8 @@ export async function loadChatAvatarFromCache(chatId: string | number | undefine
   }
   catch (err) {
     stats.failures += 1
-    if (stats.debug) console.warn('[AvatarCache] objectURL failed', err)
+    if (stats.debug)
+      console.warn('[AvatarCache] objectURL failed', err)
     return undefined
   }
 }
@@ -327,7 +346,8 @@ export async function loadChatAvatarFromCache(chatId: string | number | undefine
  */
 export async function evictExpiredOrOversized(maxBytes: number = MAX_CACHE_BYTES_DEFAULT): Promise<number> {
   const db = await openDb()
-  if (!db) return 0
+  if (!db)
+    return 0
   let removed = 0
   let totalSize = 0
   const all: AvatarCacheRecord[] = []
@@ -360,7 +380,8 @@ export async function evictExpiredOrOversized(maxBytes: number = MAX_CACHE_BYTES
     const sorted = [...remain].sort((a, b) => a.createdAt - b.createdAt)
     const toDelete: string[] = []
     for (const r of sorted) {
-      if (totalSize <= maxBytes) break
+      if (totalSize <= maxBytes)
+        break
       toDelete.push(r.key)
       totalSize -= r.size || 0
     }
@@ -386,13 +407,15 @@ export async function evictExpiredOrOversized(maxBytes: number = MAX_CACHE_BYTES
  */
 export async function clearAvatarCache(): Promise<void> {
   const db = await openDb()
-  if (!db) return
+  if (!db)
+    return
   try {
     await clearStore(db)
   }
   catch (err) {
     stats.failures += 1
-    if (stats.debug) console.warn('[AvatarCache] clearAvatarCache failed', err)
+    if (stats.debug)
+      console.warn('[AvatarCache] clearAvatarCache failed', err)
   }
 }
 
@@ -401,7 +424,8 @@ export async function clearAvatarCache(): Promise<void> {
  */
 export async function getAvatarCacheStats(): Promise<AvatarCacheStats> {
   const db = await openDb()
-  if (!db) return { ...stats }
+  if (!db)
+    return { ...stats }
   let count = 0
   let totalSizeBytes = 0
   await visitAll(db, (rec) => {
@@ -425,7 +449,8 @@ export function setAvatarCacheDebug(enabled: boolean): void {
 export async function prefillUserAvatarIntoStore(userId: string | number | undefined): Promise<boolean> {
   try {
     const mod = await loadUserAvatarFromCache(userId)
-    if (!mod) return false
+    if (!mod)
+      return false
     const { useAvatarStore } = await import('../stores/useAvatar')
     useAvatarStore().setUserAvatar(String(userId!), { blobUrl: mod.url, mimeType: mod.mimeType, ttlMs: DEFAULT_TTL_MS })
     return true
@@ -441,7 +466,8 @@ export async function prefillUserAvatarIntoStore(userId: string | number | undef
 export async function prefillChatAvatarIntoStore(chatId: string | number | undefined): Promise<boolean> {
   try {
     const mod = await loadChatAvatarFromCache(chatId)
-    if (!mod) return false
+    if (!mod)
+      return false
     const { useAvatarStore } = await import('../stores/useAvatar')
     useAvatarStore().setChatAvatar(String(chatId!), { blobUrl: mod.url, mimeType: mod.mimeType, ttlMs: DEFAULT_TTL_MS })
     return true

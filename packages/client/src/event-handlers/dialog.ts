@@ -25,7 +25,8 @@ export function registerDialogEventHandlers(
     // Reconstruct buffer from JSON-safe payload
     let buffer: Uint8Array | undefined
     try {
-      if ((data.byte as any)?.data?.length) buffer = new Uint8Array((data.byte as any).data)
+      if ((data.byte as any)?.data?.length)
+        buffer = new Uint8Array((data.byte as any).data)
       else buffer = data.byte as Uint8Array
     }
     catch {}
@@ -50,7 +51,8 @@ export function registerDialogEventHandlers(
     const chat = chatStore.chats.find(c => c.id === data.chatId)
     if (chat) {
       chat.avatarBlobUrl = url
-      if (data.fileId) chat.avatarFileId = data.fileId
+      if (data.fileId)
+        chat.avatarFileId = data.fileId
       chat.avatarUpdatedAt = new Date()
     }
 

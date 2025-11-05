@@ -1,6 +1,6 @@
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { computed, ref } from 'vue'
- 
+
 import { useBridgeStore } from '../composables/useBridge'
 
 export interface AvatarEntry {
@@ -31,13 +31,16 @@ export const useAvatarStore = defineStore('avatar', () => {
    * Returns undefined if missing or expired.
    */
   function getUserAvatarUrl(userId: string | number | undefined): string | undefined {
-    if (!userId) return undefined
+    if (!userId)
+      return undefined
     const key = String(userId)
     const entry = userAvatars.value.get(key)
-    if (!entry) return undefined
+    if (!entry)
+      return undefined
     if (entry.expiresAt && Date.now() > entry.expiresAt) {
       // Expired, cleanup and return undefined
-      if (entry.blobUrl) URL.revokeObjectURL(entry.blobUrl)
+      if (entry.blobUrl)
+        URL.revokeObjectURL(entry.blobUrl)
       userAvatars.value.delete(key)
       return undefined
     }
@@ -49,12 +52,15 @@ export const useAvatarStore = defineStore('avatar', () => {
    * Returns undefined if missing or expired.
    */
   function getChatAvatarUrl(chatId: string | number | undefined): string | undefined {
-    if (!chatId) return undefined
+    if (!chatId)
+      return undefined
     const key = String(chatId)
     const entry = chatAvatars.value.get(key)
-    if (!entry) return undefined
+    if (!entry)
+      return undefined
     if (entry.expiresAt && Date.now() > entry.expiresAt) {
-      if (entry.blobUrl) URL.revokeObjectURL(entry.blobUrl)
+      if (entry.blobUrl)
+        URL.revokeObjectURL(entry.blobUrl)
       chatAvatars.value.delete(key)
       return undefined
     }
@@ -100,10 +106,12 @@ export const useAvatarStore = defineStore('avatar', () => {
    * If missing, triggers a lazy fetch via core event 'entity:avatar:fetch'.
    */
   function ensureUserAvatar(userId: string | number | undefined) {
-    if (!userId) return
+    if (!userId)
+      return
     const key = String(userId)
     const existing = userAvatars.value.get(key)
-    if (existing && (!existing.expiresAt || Date.now() < existing.expiresAt)) return
+    if (existing && (!existing.expiresAt || Date.now() < existing.expiresAt))
+      return
     try {
       websocketStore.sendEvent('entity:avatar:fetch', { userId: key })
     }
@@ -121,14 +129,16 @@ export const useAvatarStore = defineStore('avatar', () => {
 
     for (const [key, entry] of userAvatars.value.entries()) {
       if (entry.expiresAt && now > entry.expiresAt) {
-        if (entry.blobUrl) URL.revokeObjectURL(entry.blobUrl)
+        if (entry.blobUrl)
+          URL.revokeObjectURL(entry.blobUrl)
         userAvatars.value.delete(key)
       }
     }
 
     for (const [key, entry] of chatAvatars.value.entries()) {
       if (entry.expiresAt && now > entry.expiresAt) {
-        if (entry.blobUrl) URL.revokeObjectURL(entry.blobUrl)
+        if (entry.blobUrl)
+          URL.revokeObjectURL(entry.blobUrl)
         chatAvatars.value.delete(key)
       }
     }

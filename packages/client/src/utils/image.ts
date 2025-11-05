@@ -48,7 +48,7 @@ export async function optimizeAvatarBlob(byte: Uint8Array, mimeType: string, opt
       canvas.height = Math.max(1, Math.floor(img.height * scale))
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
       URL.revokeObjectURL(url)
-      const out = await new Promise<Blob>((resolve) => canvas.toBlob(b => resolve(b!), 'image/jpeg', quality))
+      const out = await new Promise<Blob>(resolve => canvas.toBlob(b => resolve(b!), 'image/jpeg', quality))
       return out || originalBlob
     }
     finally {
@@ -56,7 +56,8 @@ export async function optimizeAvatarBlob(byte: Uint8Array, mimeType: string, opt
     }
   }
 
-  if (!imageBitmap) return originalBlob
+  if (!imageBitmap)
+    return originalBlob
 
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')!
@@ -65,6 +66,6 @@ export async function optimizeAvatarBlob(byte: Uint8Array, mimeType: string, opt
   canvas.height = Math.max(1, Math.floor(imageBitmap.height * scale))
   ctx.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height)
 
-  const out = await new Promise<Blob>((resolve) => canvas.toBlob(b => resolve(b!), 'image/jpeg', quality))
+  const out = await new Promise<Blob>(resolve => canvas.toBlob(b => resolve(b!), 'image/jpeg', quality))
   return out || originalBlob
 }
