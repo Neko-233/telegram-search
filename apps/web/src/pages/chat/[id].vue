@@ -67,6 +67,7 @@ const { chatAvatarSrc } = useChatHeaderAvatar()
  * - Prefills from persistent cache for new user IDs.
  * - Ensures a network fetch only once per unique user ID per session.
  * - Centralized at page level to avoid per-bubble repeated work.
+ * - Executes prefill/ensure concurrently to avoid sequential waits when many users appear.
  */
 function useMessageAvatarsPrime() {
   const seenUserIds = new Set<string>()
@@ -86,8 +87,8 @@ function useMessageAvatarsPrime() {
         toPrime.push(id)
     }
 
-    // Prefill from IndexedDB cache, then ensure network fetch
-    for (const userId of toPrime) {
+    // Prefill from IndexedDB cache, then ensure network fetch (parallel)
+    const primeTasks = toPrime.map(async (userId) => {
       try {
         await prefillUserAvatarIntoStore(userId)
       }
@@ -95,7 +96,8 @@ function useMessageAvatarsPrime() {
         avatarStore.ensureUserAvatar(userId)
         seenUserIds.add(userId)
       }
-    }
+    })
+    await Promise.all(primeTasks)
   }, { immediate: true })
 }
 
