@@ -81,7 +81,6 @@ async function openDb(): Promise<IDBDatabase | null> {
             db.deleteObjectStore(AVATAR_STORE)
         }
         catch (e) {
-          // eslint-disable-next-line no-console
           console.warn('[AvatarCache] failed deleting old store', e)
         }
         const store = db.createObjectStore(AVATAR_STORE, { keyPath: 'scopeId' })

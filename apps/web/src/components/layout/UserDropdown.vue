@@ -2,7 +2,7 @@
 import { prefillUserAvatarIntoStore, useAuthStore, useAvatarStore } from '@tg-search/client'
 import { onClickOutside } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, onMounted, useTemplateRef, watchEffect } from 'vue'
+import { computed, useTemplateRef, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
