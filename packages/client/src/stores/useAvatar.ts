@@ -102,6 +102,29 @@ export const useAvatarStore = defineStore('avatar', () => {
   }
 
   /**
+   * Check whether a chat avatar is present and non-expired in the in-memory cache.
+   * Optionally validates that the cached `fileId` matches the given `expectedFileId`.
+   *
+   * @param chatId - Chat identifier
+   * @param expectedFileId - Optional fileId to validate against the cached entry
+   * @returns true if a valid avatar exists (and fileId matches when provided)
+   */
+  function hasValidChatAvatar(chatId: string | number | undefined, expectedFileId?: string): boolean {
+    if (!chatId)
+      return false
+    const key = String(chatId)
+    const entry = chatAvatars.value.get(key)
+    if (!entry)
+      return false
+    const expired = entry.expiresAt && Date.now() > entry.expiresAt
+    if (expired)
+      return false
+    if (expectedFileId && entry.fileId && expectedFileId !== entry.fileId)
+      return false
+    return Boolean(entry.blobUrl)
+  }
+
+  /**
    * Ensure a user's avatar is available in cache.
    * If missing, triggers a lazy fetch via core event 'entity:avatar:fetch'.
    */
@@ -154,6 +177,7 @@ export const useAvatarStore = defineStore('avatar', () => {
     getChatAvatarUrl,
     setUserAvatar,
     setChatAvatar,
+    hasValidChatAvatar,
     ensureUserAvatar,
     cleanupExpired,
   }

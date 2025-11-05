@@ -17,10 +17,25 @@ export function registerDialogEventHandlers(
     useChatStore().chats = data.dialogs
   })
 
-  // Incremental avatar updates
+  /**
+   * Incremental avatar updates.
+   *
+   * Optimization:
+   * - Before decoding/optimizing, check in-memory cache validity (TTL + fileId match).
+   *   If valid, skip override and persistence to reduce unnecessary work.
+   */
   registerEventHandler('dialog:avatar:data', async (data) => {
     const chatStore = useChatStore()
     const avatarStore = useAvatarStore()
+
+    // Early guard: use cached avatar if it's still valid and matches fileId
+    if (avatarStore.hasValidChatAvatar(data.chatId, data.fileId)) {
+      const chat = chatStore.chats.find(c => c.id === data.chatId)
+      if (chat && data.fileId && chat.avatarFileId !== data.fileId)
+        chat.avatarFileId = data.fileId
+      console.warn('[Avatar] Skip update; cache valid', { chatId: data.chatId, fileId: data.fileId })
+      return
+    }
 
     // Reconstruct buffer from JSON-safe payload
     let buffer: Uint8Array | undefined

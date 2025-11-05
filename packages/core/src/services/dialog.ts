@@ -157,6 +157,11 @@ export function createDialogService(ctx: CoreContext) {
    * Download small avatars for each dialog with caching and emit incremental events.
    * Emits `dialog:avatar:data` per chat with raw bytes and mime type.
    *
+   * Notes on optimization:
+   * - When the avatar `fileId` has NOT changed and an in-memory cache entry exists,
+   *   we SKIP emitting `dialog:avatar:data` to avoid redundant updates.
+   * - Only when cache is missing or `fileId` differs do we download and emit.
+   *
    * Implementation detail: use Node.js `Buffer` as the emitted `byte` so that
    * it serializes to `{ type: 'Buffer', data: number[] }` over JSON. This ensures
    * the frontend can reconstruct a `Uint8Array` for blob creation reliably.
@@ -193,11 +198,10 @@ export function createDialogService(ctx: CoreContext) {
           catch {}
 
           const cached = avatarCache.get(id)
+          // Optimization: if cache exists and fileId unchanged, skip emitting to reduce noise.
           if (cached && cached.fileId && fileId && cached.fileId === fileId) {
-            logger.withFields({ chatId: id }).verbose('Avatar cache hit')
-            if (cached.byte && cached.mimeType) {
-              emitter.emit('dialog:avatar:data', { chatId: id, byte: cached.byte, mimeType: cached.mimeType, fileId })
-            }
+            logger.withFields({ chatId: id }).verbose('Avatar cache hit; skip emit')
+            // No network download and no incremental event emission.
             continue
           }
 
