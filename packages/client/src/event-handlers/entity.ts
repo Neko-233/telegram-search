@@ -5,6 +5,10 @@ import { useAvatarStore } from '../stores/useAvatar'
 import { persistUserAvatar } from '../utils/avatar-cache'
 import { optimizeAvatarBlob } from '../utils/image'
 
+/**
+ * Register entity-related client event handlers.
+ * Maps core events to client stores and performs avatar byte -> blobUrl conversion.
+ */
 export function registerEntityEventHandlers(
   registerEventHandler: ClientRegisterEventHandler,
 ) {
@@ -22,7 +26,10 @@ export function registerEntityEventHandlers(
         buffer = new Uint8Array((data.byte as any).data)
       else buffer = data.byte as Uint8Array
     }
-    catch {}
+    catch (error) {
+      // Warn-only logging to comply with lint rules
+      console.warn('[Avatar] Failed to reconstruct user avatar byte', { userId: data.userId }, error)
+    }
 
     if (!buffer) {
       // Use warn to comply with lint rule: allow only warn/error
@@ -37,7 +44,10 @@ export function registerEntityEventHandlers(
     try {
       await persistUserAvatar(data.userId, blob, data.mimeType)
     }
-    catch {}
+    catch (error) {
+      // Warn-only logging to comply with lint rules
+      console.warn('[Avatar] persistUserAvatar failed', { userId: data.userId }, error)
+    }
 
     avatarStore.setUserAvatar(data.userId, { blobUrl: url, fileId: data.fileId, mimeType: data.mimeType })
 

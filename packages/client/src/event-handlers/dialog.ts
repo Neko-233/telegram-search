@@ -29,7 +29,10 @@ export function registerDialogEventHandlers(
         buffer = new Uint8Array((data.byte as any).data)
       else buffer = data.byte as Uint8Array
     }
-    catch {}
+    catch (error) {
+      // Warn-only logging to comply with lint rules
+      console.warn('[Avatar] Failed to reconstruct chat avatar byte', { chatId: data.chatId }, error)
+    }
 
     if (!buffer) {
       // Use warn to comply with lint rule: allow only warn/error
@@ -45,7 +48,10 @@ export function registerDialogEventHandlers(
     try {
       await persistChatAvatar(data.chatId, blob, data.mimeType)
     }
-    catch {}
+    catch (error) {
+      // Warn-only logging to comply with lint rules
+      console.warn('[Avatar] persistChatAvatar failed', { chatId: data.chatId }, error)
+    }
 
     // Update chat store fields
     const chat = chatStore.chats.find(c => c.id === data.chatId)

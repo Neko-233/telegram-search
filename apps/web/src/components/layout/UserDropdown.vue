@@ -47,15 +47,20 @@ const avatarStore = useAvatarStore()
 function useUserDropdownAvatar() {
   const userAvatarSrc = computed(() => avatarStore.getUserAvatarUrl(userId.value))
 
-  onMounted(() => {
-    if (userId.value)
-      prefillUserAvatarIntoStore(userId.value).finally(() => avatarStore.ensureUserAvatar(userId.value))
-  })
+  /**
+   * Load avatar for current `userId`: prefill from cache, then ensure network fetch.
+   * Using `finally` guarantees `ensureUserAvatar` runs even if prefill fails.
+   */
+  function loadAvatar() {
+    if (!userId.value)
+      return
+    prefillUserAvatarIntoStore(userId.value).finally(() => avatarStore.ensureUserAvatar(userId.value))
+  }
 
-  // Ensure avatar when dropdown toggles open
+  // Fetch avatar only when dropdown toggles open to avoid duplicate work
   watchEffect(() => {
     if (isOpen.value && userId.value)
-      prefillUserAvatarIntoStore(userId.value).finally(() => avatarStore.ensureUserAvatar(userId.value))
+      loadAvatar()
   })
 
   return { userAvatarSrc }

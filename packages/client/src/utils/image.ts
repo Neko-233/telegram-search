@@ -17,6 +17,54 @@ export interface OptimizeOptions {
 }
 
 /**
+ * Check if a canvas contains any transparent pixels by sampling alpha values.
+ * Uses stride sampling to reduce overhead on large images.
+ */
+function canvasHasAlpha(canvas: HTMLCanvasElement, sampleStride = 16): boolean {
+  const ctx = canvas.getContext('2d')
+  if (!ctx)
+    return false
+  try {
+    const { width, height } = canvas
+    const imageData = ctx.getImageData(0, 0, width, height)
+    const data = imageData.data
+    // RGBA sequence; inspect alpha channel (every 4th byte)
+    for (let i = 3; i < data.length; i += sampleStride) {
+      if (data[i] < 255)
+        return true
+    }
+  }
+  catch {
+    // If getImageData fails due to tainted canvas, assume no alpha
+  }
+  return false
+}
+
+/**
+ * Determine an output mime type that preserves transparency when present.
+ * Prefers WebP for alpha if supported; otherwise falls back to PNG.
+ */
+function pickOutputType(inputMime: string, canvas: HTMLCanvasElement, hasAlpha: boolean): string {
+  // Animated GIF should not be recompressed via canvas (only first frame would remain)
+  if (/gif/i.test(inputMime))
+    return inputMime
+
+  if (hasAlpha) {
+    // Try WebP first
+    try {
+      const test = canvas.toDataURL('image/webp')
+      if (test.startsWith('data:image/webp'))
+        return 'image/webp'
+    }
+    catch {}
+    return 'image/png'
+  }
+
+  // For non-alpha images, JPEG is space-efficient
+  return 'image/jpeg'
+}
+
+/**
  * Downscale and recompress an avatar image to reduce memory footprint.
  * Uses Canvas to resize to a square within `maxSize` while preserving aspect ratio.
  * Returns a Blob of the optimized image, or the original Blob if resizing is unnecessary.
@@ -47,8 +95,10 @@ export async function optimizeAvatarBlob(byte: Uint8Array, mimeType: string, opt
       canvas.width = Math.max(1, Math.floor(img.width * scale))
       canvas.height = Math.max(1, Math.floor(img.height * scale))
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      const hasAlpha = canvasHasAlpha(canvas)
+      const outType = pickOutputType(mimeType, canvas, hasAlpha)
       URL.revokeObjectURL(url)
-      const out = await new Promise<Blob>(resolve => canvas.toBlob(b => resolve(b!), 'image/jpeg', quality))
+      const out = await new Promise<Blob>(resolve => canvas.toBlob(b => resolve(b!), outType, quality))
       return out || originalBlob
     }
     finally {
@@ -66,6 +116,8 @@ export async function optimizeAvatarBlob(byte: Uint8Array, mimeType: string, opt
   canvas.height = Math.max(1, Math.floor(imageBitmap.height * scale))
   ctx.drawImage(imageBitmap, 0, 0, canvas.width, canvas.height)
 
-  const out = await new Promise<Blob>(resolve => canvas.toBlob(b => resolve(b!), 'image/jpeg', quality))
+  const hasAlpha = canvasHasAlpha(canvas)
+  const outType = pickOutputType(mimeType, canvas, hasAlpha)
+  const out = await new Promise<Blob>(resolve => canvas.toBlob(b => resolve(b!), outType, quality))
   return out || originalBlob
 }

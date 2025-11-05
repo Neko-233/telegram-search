@@ -158,12 +158,24 @@ function useCurrentUserAvatar() {
 
 const { userAvatarSrc } = useCurrentUserAvatar()
 
-// Prefill chat avatars when chat list changes
-watch(chats, async (list) => {
-  for (const chat of list) {
-    // Attempt prefill for each chat; network fetch remains driven by server events
-    await prefillChatAvatarIntoStore(chat.id)
+/**
+ * Prefill chat avatars from persistent cache in parallel.
+ * - Avoids sequential IndexedDB waits when chat list is large.
+ * - Only warms cache; network fetch continues to be driven by server events.
+ */
+async function prefillChatAvatarsParallel(list: any[]) {
+  const tasks = list.map(chat => prefillChatAvatarIntoStore(chat.id))
+  try {
+    await Promise.all(tasks)
   }
+  catch (error) {
+    console.warn('Failed to prefill chat avatars', error)
+  }
+}
+
+// Prefill chat avatars when chat list changes (parallelized)
+watch(chats, (list) => {
+  void prefillChatAvatarsParallel(list)
 }, { immediate: true })
 </script>
 

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CoreDialog, CoreMessage } from '@tg-search/core/types'
 
-import { useAvatarStore, useBridgeStore, useChatStore, useMessageStore, useSettingsStore } from '@tg-search/client'
+import { prefillUserAvatarIntoStore, useAvatarStore, useBridgeStore, useChatStore, useMessageStore, useSettingsStore } from '@tg-search/client'
 import { useWindowSize } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
@@ -61,6 +61,46 @@ function useChatHeaderAvatar() {
 }
 
 const { chatAvatarSrc } = useChatHeaderAvatar()
+
+/**
+ * Prime user avatars for messages in view with deduplication.
+ * - Prefills from persistent cache for new user IDs.
+ * - Ensures a network fetch only once per unique user ID per session.
+ * - Centralized at page level to avoid per-bubble repeated work.
+ */
+function useMessageAvatarsPrime() {
+  const seenUserIds = new Set<string>()
+
+  watch(sortedMessageArray, async (messages) => {
+    // Collect unique user IDs from current message window
+    const uniqueIds = new Set<string>()
+    for (const m of messages) {
+      if (m.fromId)
+        uniqueIds.add(m.fromId)
+    }
+
+    // Only prime avatars we haven't processed in this session
+    const toPrime: string[] = []
+    for (const id of uniqueIds) {
+      if (!seenUserIds.has(id))
+        toPrime.push(id)
+    }
+
+    // Prefill from IndexedDB cache, then ensure network fetch
+    for (const userId of toPrime) {
+      try {
+        await prefillUserAvatarIntoStore(userId)
+      }
+      finally {
+        avatarStore.ensureUserAvatar(userId)
+        seenUserIds.add(userId)
+      }
+    }
+  }, { immediate: true })
+}
+
+// Initialize deduplicated avatar priming for the current chat
+useMessageAvatarsPrime()
 
 // Initial load when component mounts
 onMounted(async () => {

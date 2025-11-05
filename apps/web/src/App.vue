@@ -33,11 +33,17 @@ function setupAvatarCleanupScheduler() {
   // Initial cleanup on app start
   avatarStore.cleanupExpired()
   // Also evict expired or oversized records from IndexedDB (50MB budget)
-  evictExpiredOrOversized().catch(() => {})
+  evictExpiredOrOversized().catch(error => {
+    // Warn-only logging to comply with lint rules
+    console.warn('[Avatar] Failed to evict records on init', error)
+  })
   // 15 minutes interval
   avatarCleanupTimer = window.setInterval(() => {
     avatarStore.cleanupExpired()
-    evictExpiredOrOversized().catch(() => {})
+    evictExpiredOrOversized().catch(error => {
+      // Warn-only logging to comply with lint rules
+      console.warn('[Avatar] Failed to evict records in interval', error)
+    })
   }, 15 * 60 * 1000)
 }
 

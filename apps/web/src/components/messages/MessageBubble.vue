@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import type { CoreMessage } from '@tg-search/core/types'
 
-import { formatMessageTimestamp, prefillUserAvatarIntoStore, useAvatarStore } from '@tg-search/client'
-import { computed, onMounted } from 'vue'
+import { formatMessageTimestamp, useAvatarStore } from '@tg-search/client'
+import { computed } from 'vue'
 
 import Avatar from '../ui/Avatar.vue'
 import MediaRenderer from './media/MediaRenderer.vue'
@@ -14,18 +14,12 @@ const props = defineProps<{
 const avatarStore = useAvatarStore()
 
 /**
- * Setup message avatar state and lazy fetch.
+ * Setup message avatar state.
  * - Computes current avatar URL from centralized avatar store.
- * - Triggers a lazy fetch if avatar cache is missing/expired.
+ * - Network fetching is orchestrated at the chat page level to avoid duplicates.
  */
 function useMessageAvatar() {
   const avatarSrc = computed(() => avatarStore.getUserAvatarUrl(props.message.fromId))
-
-  onMounted(() => {
-    // Prefill from persistent cache first, then fall back to network fetch
-    prefillUserAvatarIntoStore(props.message.fromId)
-    avatarStore.ensureUserAvatar(props.message.fromId)
-  })
 
   return { avatarSrc }
 }
