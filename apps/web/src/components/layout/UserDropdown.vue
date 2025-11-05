@@ -1,8 +1,8 @@
 <script lang="ts" setup>
-import { useAuthStore } from '@tg-search/client'
+import { prefillUserAvatarIntoStore, useAuthStore, useAvatarStore } from '@tg-search/client'
 import { onClickOutside } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, useTemplateRef } from 'vue'
+import { computed, onMounted, useTemplateRef, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -36,6 +36,32 @@ function handleLoginLogout() {
 
 const username = computed(() => activeSessionComputed.value?.me?.username)
 const userId = computed(() => activeSessionComputed.value?.me?.id)
+
+const avatarStore = useAvatarStore()
+
+/**
+ * Setup user dropdown avatar state and lazy fetch.
+ * - Computes avatar URL from centralized avatar store by `userId`.
+ * - Ensures avatar is fetched when dropdown opens or component mounts.
+ */
+function useUserDropdownAvatar() {
+  const userAvatarSrc = computed(() => avatarStore.getUserAvatarUrl(userId.value))
+
+  onMounted(() => {
+    if (userId.value)
+      prefillUserAvatarIntoStore(userId.value).finally(() => avatarStore.ensureUserAvatar(userId.value))
+  })
+
+  // Ensure avatar when dropdown toggles open
+  watchEffect(() => {
+    if (isOpen.value && userId.value)
+      prefillUserAvatarIntoStore(userId.value).finally(() => avatarStore.ensureUserAvatar(userId.value))
+  })
+
+  return { userAvatarSrc }
+}
+
+const { userAvatarSrc } = useUserDropdownAvatar()
 </script>
 
 <template>
@@ -46,6 +72,7 @@ const userId = computed(() => activeSessionComputed.value?.me?.id)
   >
     <div class="flex items-center gap-3 border-b p-3 dark:border-gray-600">
       <Avatar
+        :src="userAvatarSrc"
         :name="username"
         size="md"
       />

@@ -62,6 +62,7 @@ function toggleActive() {
         @click="router.push(`/chat/${chat.id}`)"
       >
         <Avatar
+          :src="chat.avatarBlobUrl"
           :name="chat.name"
           size="sm"
           class="flex-shrink-0"

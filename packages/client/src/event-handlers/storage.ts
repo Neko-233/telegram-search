@@ -1,13 +1,21 @@
 import type { ClientRegisterEventHandler } from '.'
 
 import { useChatStore } from '../stores/useChat'
+import { prefillChatAvatarIntoStore } from '../utils/avatar-cache'
 import { useMessageStore } from '../stores/useMessage'
 
 export function registerStorageEventHandlers(
   registerEventHandler: ClientRegisterEventHandler,
 ) {
   registerEventHandler('storage:dialogs', (data) => {
-    useChatStore().chats = data.dialogs
+    const chatStore = useChatStore()
+    chatStore.chats = data.dialogs
+    // Prefill avatars from persistent cache for better initial UX
+    Promise.resolve().then(async () => {
+      for (const chat of chatStore.chats) {
+        await prefillChatAvatarIntoStore(chat.id)
+      }
+    })
   })
 
   registerEventHandler('storage:messages', ({ messages }) => {

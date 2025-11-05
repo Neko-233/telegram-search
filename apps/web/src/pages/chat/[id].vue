@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CoreDialog, CoreMessage } from '@tg-search/core/types'
 
-import { useBridgeStore, useChatStore, useMessageStore, useSettingsStore } from '@tg-search/client'
+import { useAvatarStore, useBridgeStore, useChatStore, useMessageStore, useSettingsStore } from '@tg-search/client'
 import { useWindowSize } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
@@ -49,6 +49,19 @@ const targetMessageParams = computed(() => ({
   messageUuid: route.query.messageUuid as string | undefined,
 }))
 
+const avatarStore = useAvatarStore()
+
+/**
+ * Compute chat header avatar src via centralized avatar store.
+ * Avoids typing issues by not reading transient fields on CoreDialog.
+ */
+function useChatHeaderAvatar() {
+  const chatAvatarSrc = computed(() => avatarStore.getChatAvatarUrl(currentChat.value?.id))
+  return { chatAvatarSrc }
+}
+
+const { chatAvatarSrc } = useChatHeaderAvatar()
+
 // Initial load when component mounts
 onMounted(async () => {
   const initialMessageId = targetMessageParams.value.messageId
@@ -94,8 +107,7 @@ async function loadNewerMessages() {
   // Get the current max message ID to fetch messages after it
   const currentMaxId = messageWindow.value?.maxId
   if (!currentMaxId || currentMaxId === -Infinity) {
-    // eslint-disable-next-line no-console
-    console.log('No messages loaded yet, cannot fetch newer messages')
+    console.warn('No messages loaded yet, cannot fetch newer messages')
     return
   }
 
@@ -243,6 +255,7 @@ watch(
       <div class="flex items-center gap-3">
         <Avatar
           class="h-10 w-10 flex items-center justify-center rounded-full bg-primary/10"
+          :src="chatAvatarSrc"
           :name="currentChat?.name"
           size="md"
         />

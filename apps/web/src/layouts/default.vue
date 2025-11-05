@@ -1,14 +1,14 @@
 <script lang="ts" setup>
 import type { ChatGroup } from '@tg-search/client'
 
-import { useBridgeStore, useChatStore, useSettingsStore } from '@tg-search/client'
+import { prefillChatAvatarIntoStore, prefillUserAvatarIntoStore, useAvatarStore, useBridgeStore, useChatStore, useSettingsStore } from '@tg-search/client'
 import { breakpointsTailwind, useBreakpoints, useDark } from '@vueuse/core'
 import { abbreviatedSha as gitShortSha } from '~build/git'
 import { version as pkgVersion } from '~build/package'
 import buildTime from '~build/time'
 import { storeToRefs } from 'pinia'
 import { VList } from 'virtua/vue'
-import { computed, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 
@@ -24,6 +24,7 @@ const isDark = useDark()
 const websocketStore = useBridgeStore()
 const route = useRoute()
 const router = useRouter()
+const avatarStore = useAvatarStore()
 
 const { t } = useI18n()
 
@@ -130,6 +131,40 @@ function handleAvatarClick() {
     })
   }
 }
+
+/**
+ * Setup current user's avatar state and lazy fetch.
+ * - Computes avatar URL via `useAvatarStore` for active session user.
+ * - Ensures avatar is fetched when layout mounts and when connection status changes.
+ */
+function useCurrentUserAvatar() {
+  const meId = computed(() => websocketStore.getActiveSession()?.me?.id)
+  const userAvatarSrc = computed(() => avatarStore.getUserAvatarUrl(meId.value))
+
+  onMounted(() => {
+    if (meId.value) {
+      // Prefill from disk cache to speed up first paint
+      prefillUserAvatarIntoStore(meId.value).finally(() => avatarStore.ensureUserAvatar(meId.value))
+    }
+  })
+
+  watch(() => websocketStore.getActiveSession()?.isConnected, (connected) => {
+    if (connected && meId.value)
+      avatarStore.ensureUserAvatar(meId.value)
+  })
+
+  return { userAvatarSrc }
+}
+
+const { userAvatarSrc } = useCurrentUserAvatar()
+
+// Prefill chat avatars when chat list changes
+watch(chats, async (list) => {
+  for (const chat of list) {
+    // Attempt prefill for each chat; network fetch remains driven by server events
+    await prefillChatAvatarIntoStore(chat.id)
+  }
+}, { immediate: true })
 </script>
 
 <template>
@@ -251,6 +286,7 @@ function handleAvatarClick() {
                 @click="router.push(`/chat/${chat.id}`)"
               >
                 <Avatar
+                  :src="avatarStore.getChatAvatarUrl(chat.id)"
                   :name="chat.name"
                   size="sm"
                   class="flex-shrink-0"
@@ -277,12 +313,13 @@ function handleAvatarClick() {
             :class="{ 'cursor-pointer': !websocketStore.getActiveSession()?.isConnected }"
             @click="handleAvatarClick"
           >
-            <div class="h-8 w-8 flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
-              <Avatar
-                :name="websocketStore.getActiveSession()?.me?.name"
-                size="sm"
-              />
-            </div>
+          <div class="h-8 w-8 flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
+            <Avatar
+              :src="userAvatarSrc"
+              :name="websocketStore.getActiveSession()?.me?.name"
+              size="sm"
+            />
+          </div>
             <div class="min-w-0 flex flex-1 flex-col">
               <span class="truncate text-sm font-medium">{{ websocketStore.getActiveSession()?.me?.name }}</span>
               <span class="truncate text-xs text-muted-foreground">{{ websocketStore.getActiveSession()?.isConnected ? t('settings.connected') : t('settings.disconnected') }}</span>
