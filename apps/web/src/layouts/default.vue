@@ -262,6 +262,12 @@ watch(activeGroupChats, (list) => {
         />
 
         <SidebarSelector
+          path="/ai-chat"
+          icon="i-lucide-message-square-text"
+          :name="t('aiChat.aiChat')"
+        />
+
+        <SidebarSelector
           v-if="!disableSettings"
           path="/settings"
           icon="i-lucide-settings"

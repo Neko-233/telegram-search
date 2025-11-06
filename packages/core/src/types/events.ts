@@ -186,12 +186,20 @@ export interface CoreMessageSearchParams {
 
   useVector: boolean
   pagination?: CorePagination
+
+  // Additional filters for RAG
+  fromUserId?: string // Filter by user who sent the message
+  timeRange?: {
+    start?: number // Unix timestamp in seconds
+    end?: number // Unix timestamp in seconds
+  }
 }
 
 export type CoreRetrievalMessages = CoreMessage & {
   similarity?: number
   timeRelevance?: number
   combinedScore?: number
+  chatName?: string
 }
 
 export interface StorageMessageContextParams {
