@@ -32,6 +32,12 @@ export function createDialogService(ctx: CoreContext) {
   }>()
 
   /**
+   * In-memory map of dialog entities keyed by `chatId`.
+   * Helps resolve a single dialog entity quickly for prioritized avatar fetching.
+   */
+  const dialogEntities = new Map<number, Api.User | Api.Chat | Api.Channel>()
+
+  /**
    * Convert a Telegram `Dialog` to minimal `CoreDialog` data.
    * Includes avatar metadata where available (no bytes).
    *
@@ -110,6 +116,14 @@ export function createDialogService(ctx: CoreContext) {
       if (!dialog.entity) {
         continue
       }
+
+      // Cache entity for prioritized single fetch later
+      try {
+        const id = dialog.entity.id?.toJSNumber?.()
+        if (id)
+          dialogEntities.set(id, dialog.entity as Api.User | Api.Chat | Api.Channel)
+      }
+      catch {}
 
       const result = resolveDialog(dialog).orUndefined()
       if (!result) {
@@ -245,8 +259,107 @@ export function createDialogService(ctx: CoreContext) {
     await Promise.allSettled(workers)
   }
 
+  /**
+   * Fetch a single dialog's small avatar immediately and emit incremental update.
+   *
+   * Logic:
+   * - Resolve dialog entity from in-memory map or via Telegram API.
+   * - If cached and `fileId` unchanged, skip redundant emit.
+   * - Dedupe concurrent requests for the same `chatId` to avoid wasted work.
+   * - Download small avatar bytes and emit `dialog:avatar:data`.
+   */
+  async function fetchSingleDialogAvatar(chatId: string | number) {
+    try {
+      const idNum = typeof chatId === 'string' ? Number(chatId) : chatId
+      if (!idNum)
+        return
+
+      // Dedupe: avoid concurrent duplicate single fetches for the same chat
+      if (!((globalThis as any).__tg_inflightSingles)) {
+        (globalThis as any).__tg_inflightSingles = new Set<number>()
+      }
+      const inflightSingles: Set<number> = (globalThis as any).__tg_inflightSingles
+      if (inflightSingles.has(idNum))
+        return
+      inflightSingles.add(idNum)
+
+      // Resolve entity via cache or API
+      let entity = dialogEntities.get(idNum)
+      if (!entity) {
+        entity = await getClient().getEntity(String(chatId)) as Api.User | Api.Chat | Api.Channel
+        // Best-effort cache for future calls
+        try {
+          if (entity && (entity as any).id?.toJSNumber)
+            dialogEntities.set((entity as any).id.toJSNumber(), entity)
+        }
+        catch {}
+      }
+      if (!entity)
+        return
+
+      // Discover fileId for caching hint
+      let fileId: string | undefined
+      try {
+        if (entity instanceof Api.User && entity.photo && 'photoId' in entity.photo) {
+          fileId = (entity.photo as Api.UserProfilePhoto).photoId?.toString()
+        }
+        else if ((entity instanceof Api.Chat || entity instanceof Api.Channel) && entity.photo && 'photoId' in entity.photo) {
+          fileId = (entity.photo as Api.ChatPhoto).photoId?.toString()
+        }
+      }
+      catch {}
+
+      const cached = avatarCache.get(idNum)
+      if (cached && cached.fileId && fileId && cached.fileId === fileId) {
+        logger.withFields({ chatId: idNum }).verbose('Single avatar cache hit; skip emit')
+        return
+      }
+
+      // Attempt download: small profile photo
+      let buffer: Buffer | Uint8Array | undefined
+      try {
+        buffer = await getClient().downloadProfilePhoto(entity, { isBig: false }) as Buffer
+      }
+      catch (err) {
+        logger.withError(err as Error).debug('downloadProfilePhoto failed, trying fallback(single)')
+        const photo = (entity as any).photo
+        if (photo) {
+          try {
+            buffer = await getClient().downloadMedia(photo, { thumb: -1 }) as Buffer
+          }
+          catch (err2) {
+            logger.withError(err2 as Error).debug('downloadMedia fallback(single) failed')
+          }
+        }
+      }
+
+      if (!buffer) {
+        logger.withFields({ chatId: idNum }).verbose('No avatar available for single dialog fetch')
+        return
+      }
+
+      const byte: Buffer = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
+      const mimeType = 'image/jpeg'
+
+      avatarCache.set(idNum, { fileId, mimeType, byte, updatedAt: Date.now() })
+      emitter.emit('dialog:avatar:data', { chatId: idNum, byte, mimeType, fileId })
+    }
+    catch (error) {
+      logger.withError(error as Error).warn('Failed to fetch single avatar for dialog')
+    }
+    finally {
+      try {
+        const idNum = typeof chatId === 'string' ? Number(chatId) : chatId
+        const inflightSingles: Set<number> | undefined = (globalThis as any).__tg_inflightSingles
+        inflightSingles?.delete(idNum as number)
+      }
+      catch {}
+    }
+  }
+
   return {
     fetchDialogs,
     fetchDialogAvatars,
+    fetchSingleDialogAvatar,
   }
 }

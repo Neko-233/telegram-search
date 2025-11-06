@@ -25,6 +25,8 @@ export const useAvatarStore = defineStore('avatar', () => {
   // In-memory caches
   const userAvatars = ref<Map<string, AvatarEntry>>(new Map())
   const chatAvatars = ref<Map<string, AvatarEntry>>(new Map())
+  // Track in-flight prioritized chat avatar fetches to avoid duplicate sends
+  const inflightChatFetchIds = ref<Set<string>>(new Set())
 
   /**
    * Get cached avatar blob URL for a user.
@@ -144,6 +146,49 @@ export const useAvatarStore = defineStore('avatar', () => {
   }
 
   /**
+   * Ensure a chat's avatar is available in cache.
+   * If missing or expired, triggers prioritized fetch via 'dialog:avatar:fetch'.
+   */
+  function ensureChatAvatar(chatId: string | number | undefined, expectedFileId?: string) {
+    if (!chatId)
+      return
+    const key = String(chatId)
+    const valid = hasValidChatAvatar(key, expectedFileId)
+    if (valid)
+      return
+    // Dedupe: if a prioritized fetch is already in-flight for this chat, skip
+    if (inflightChatFetchIds.value.has(key))
+      return
+    try {
+      inflightChatFetchIds.value.add(key)
+      websocketStore.sendEvent('dialog:avatar:fetch', { chatId: key })
+    }
+    catch (error) {
+      console.warn('[Avatar] ensureChatAvatar sendEvent failed:', error)
+    }
+  }
+
+  /**
+   * Check whether a prioritized chat avatar fetch is currently in-flight.
+   * Helps components avoid re-sending the same request while waiting.
+   */
+  function isChatFetchInflight(chatId: string | number | undefined): boolean {
+    if (!chatId)
+      return false
+    return inflightChatFetchIds.value.has(String(chatId))
+  }
+
+  /**
+   * Mark a prioritized chat avatar fetch as completed.
+   * Should be called once a 'dialog:avatar:data' arrives or on error.
+   */
+  function markChatFetchCompleted(chatId: string | number | undefined): void {
+    if (!chatId)
+      return
+    inflightChatFetchIds.value.delete(String(chatId))
+  }
+
+  /**
    * Cleanup expired avatar entries and revoke their blob URLs.
    * Intended to be called periodically or on app lifecycle events.
    */
@@ -172,6 +217,7 @@ export const useAvatarStore = defineStore('avatar', () => {
   return {
     userAvatars,
     chatAvatars,
+    inflightChatFetchIds,
     size,
     getUserAvatarUrl,
     getChatAvatarUrl,
@@ -179,6 +225,9 @@ export const useAvatarStore = defineStore('avatar', () => {
     setChatAvatar,
     hasValidChatAvatar,
     ensureUserAvatar,
+    ensureChatAvatar,
+    isChatFetchInflight,
+    markChatFetchCompleted,
     cleanupExpired,
   }
 })

@@ -98,6 +98,11 @@ export interface FetchMessageOpts {
 
 export interface DialogEventToCore {
   'dialog:fetch': () => void
+  /**
+   * Request fetching a single dialog's avatar immediately.
+   * Used by frontend to prioritize avatars within viewport.
+   */
+  'dialog:avatar:fetch': (data: { chatId: number | string }) => void
 }
 
 export interface DialogEventFromCore {

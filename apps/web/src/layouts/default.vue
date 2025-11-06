@@ -177,6 +177,25 @@ async function prefillChatAvatarsParallel(list: any[]) {
 watch(chats, (list) => {
   void prefillChatAvatarsParallel(list)
 }, { immediate: true })
+
+/**
+ * Prioritize fetching avatars for currently visible chats.
+ * - Prefills small set from disk cache
+ * - Triggers prioritized network fetch for missing avatars
+ */
+async function prioritizeVisibleAvatars(list: any[], count = 50) {
+  const top = list.slice(0, count)
+  await prefillChatAvatarsParallel(top)
+  for (const chat of top) {
+    avatarStore.ensureChatAvatar(chat.id, chat.avatarFileId)
+  }
+}
+
+// Prioritize visible avatars on group change and initial render
+watch(activeGroupChats, (list) => {
+  if (!list?.length) return
+  void prioritizeVisibleAvatars(list)
+}, { immediate: true })
 </script>
 
 <template>
@@ -295,6 +314,7 @@ watch(chats, (list) => {
                 :key="chat.id"
                 :class="{ 'bg-accent text-accent-foreground': route.params.chatId === chat.id.toString() }"
                 class="mx-2 my-0.5 flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 transition-colors hover:bg-accent hover:text-accent-foreground"
+                v-ensure-chat-avatar="{ chatId: chat.id, fileId: chat.avatarFileId }"
                 @click="router.push(`/chat/${chat.id}`)"
               >
                 <Avatar

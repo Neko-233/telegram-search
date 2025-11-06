@@ -80,6 +80,9 @@ export function registerDialogEventHandlers(
     // Populate centralized avatar cache as well
     avatarStore.setChatAvatar(data.chatId, { blobUrl: url, fileId: data.fileId, mimeType: data.mimeType })
 
+    // Signal completion to clear in-flight flag for this chat
+    avatarStore.markChatFetchCompleted(data.chatId)
+
     console.warn('[Avatar] Updated chat avatar', { chatId: data.chatId, fileId: data.fileId })
   })
 }

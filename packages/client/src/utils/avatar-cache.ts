@@ -59,9 +59,6 @@ const stats: AvatarCacheStats = {
 /**
  * Open or create the avatar cache database and object store.
  * Returns null if IndexedDB is unavailable.
- */
-/**
- * Open or create the avatar cache database and object store.
  * v2: Switch to deterministic keyPath `scopeId` to allow O(1) lookups.
  */
 async function openDb(): Promise<IDBDatabase | null> {
