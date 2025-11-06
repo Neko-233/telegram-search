@@ -5,7 +5,7 @@ import type { CoreUserEntity } from '../types/events'
 
 import { useLogger } from '@guiiai/logg'
 import { Ok } from '@unbird/result'
- 
+
 import { useAvatarHelper } from '../message-resolvers/avatar-resolver'
 import { resolveEntity } from '../utils/entity'
 
