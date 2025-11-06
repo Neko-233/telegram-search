@@ -193,7 +193,8 @@ async function prioritizeVisibleAvatars(list: any[], count = 50) {
 
 // Prioritize visible avatars on group change and initial render
 watch(activeGroupChats, (list) => {
-  if (!list?.length) return
+  if (!list?.length)
+    return
   void prioritizeVisibleAvatars(list)
 }, { immediate: true })
 </script>
@@ -312,9 +313,9 @@ watch(activeGroupChats, (list) => {
             <template #default="{ item: chat }">
               <div
                 :key="chat.id"
+                v-ensure-chat-avatar="{ chatId: chat.id, fileId: chat.avatarFileId }"
                 :class="{ 'bg-accent text-accent-foreground': route.params.chatId === chat.id.toString() }"
                 class="mx-2 my-0.5 flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 transition-colors hover:bg-accent hover:text-accent-foreground"
-                v-ensure-chat-avatar="{ chatId: chat.id, fileId: chat.avatarFileId }"
                 @click="router.push(`/chat/${chat.id}`)"
               >
                 <Avatar
