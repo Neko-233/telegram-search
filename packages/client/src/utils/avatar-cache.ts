@@ -102,10 +102,6 @@ async function openDb(): Promise<IDBDatabase | null> {
  * Compute SHA-256 digest (hex) for a Blob or byte array.
  * Used as an ETag-like validator for avatar bytes.
  */
-/**
- * Compute SHA-256 digest (hex) for a Blob or byte array.
- * Used as an ETag-like validator for avatar bytes.
- */
 async function sha256Hex(input: Blob | Uint8Array): Promise<string> {
   const data: ArrayBuffer = input instanceof Blob
     ? await input.arrayBuffer()
@@ -127,8 +123,6 @@ function scopeKeyForChat(id: string): string {
 
 /**
  * Internal helper to put a record into the store.
- */
-/**
  * Upsert a record into the store using the `scopeId` key.
  */
 async function putRecord(db: IDBDatabase, record: AvatarCacheRecord): Promise<void> {
@@ -179,9 +173,6 @@ async function visitAll(db: IDBDatabase, visitor: (rec: AvatarCacheRecord) => vo
 /**
  * Persist a user avatar Blob into IndexedDB with TTL and metadata.
  * If IndexedDB is unavailable, the operation is silently skipped.
- */
-/**
- * Persist a user avatar Blob into IndexedDB with TTL and metadata.
  * Upserts by deterministic `scopeId` to avoid multiple records per user.
  */
 export async function persistUserAvatar(userId: string, blob: Blob, mimeType: string): Promise<void> {
@@ -214,9 +205,6 @@ export async function persistUserAvatar(userId: string, blob: Blob, mimeType: st
   }
 }
 
-/**
- * Persist a chat avatar Blob into IndexedDB with TTL and metadata.
- */
 /**
  * Persist a chat avatar Blob into IndexedDB with TTL and metadata.
  * Upserts by deterministic `scopeId` to avoid multiple records per chat.

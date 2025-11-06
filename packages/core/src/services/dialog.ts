@@ -38,6 +38,12 @@ export function createDialogService(ctx: CoreContext) {
   const dialogEntities = new Map<number, Api.User | Api.Chat | Api.Channel>()
 
   /**
+   * Track in-flight prioritized single avatar fetches per service instance.
+   * Prevents duplicate downloads for the same `chatId` concurrently.
+   */
+  const inflightSingles = new Set<number>()
+
+  /**
    * Convert a Telegram `Dialog` to minimal `CoreDialog` data.
    * Includes avatar metadata where available (no bytes).
    *
@@ -274,11 +280,7 @@ export function createDialogService(ctx: CoreContext) {
       if (!idNum)
         return
 
-      // Dedupe: avoid concurrent duplicate single fetches for the same chat
-      if (!((globalThis as any).__tg_inflightSingles)) {
-        (globalThis as any).__tg_inflightSingles = new Set<number>()
-      }
-      const inflightSingles: Set<number> = (globalThis as any).__tg_inflightSingles
+      // Dedupe: avoid concurrent duplicate single fetches for the same chat (instance-scoped)
       if (inflightSingles.has(idNum))
         return
       inflightSingles.add(idNum)
@@ -349,9 +351,9 @@ export function createDialogService(ctx: CoreContext) {
     }
     finally {
       try {
-        const idNum = typeof chatId === 'string' ? Number(chatId) : chatId
-        const inflightSingles: Set<number> | undefined = (globalThis as any).__tg_inflightSingles
-        inflightSingles?.delete(idNum as number)
+        const id = typeof chatId === 'string' ? Number(chatId) : chatId
+        if (id)
+          inflightSingles.delete(id as number)
       }
       catch {}
     }
