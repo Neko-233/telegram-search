@@ -3,8 +3,9 @@ import type { InferInput } from 'valibot'
 
 import { useLogger } from '@guiiai/logg'
 import { tool } from '@xsai/tool'
-import * as v from 'valibot'
 import { generateText } from 'xsai'
+
+import * as v from 'valibot'
 
 const logger = useLogger('composables:ai-chat')
 

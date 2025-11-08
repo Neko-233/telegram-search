@@ -59,4 +59,3 @@ This repo is a pnpm-powered monorepo for a Telegram search/export app. It uses a
 - Message ordering: always use Telegram Message ID over timestamps.
 - Dual DB mode: ensure code paths work for both Postgres and PGlite; avoid vendor-specific SQL in core logic.
 - Avoid memory leaks: unsubscribe listeners on cleanup and prefer one-time listeners when appropriate.
-

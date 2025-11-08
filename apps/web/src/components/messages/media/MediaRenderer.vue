@@ -3,8 +3,9 @@ import type { CoreMessageMediaFromBlob } from '@tg-search/core'
 import type { CoreMessage } from '@tg-search/core/types'
 import type { AnimationItem } from 'lottie-web'
 
-import { useSettingsStore } from '@tg-search/client'
 import lottie from 'lottie-web'
+
+import { useSettingsStore } from '@tg-search/client'
 import { storeToRefs } from 'pinia'
 import { computed, onUnmounted, ref, watch } from 'vue'
 

@@ -1,11 +1,12 @@
 <script lang="ts" setup>
 import type { ChatGroup } from '@tg-search/client'
 
+import buildTime from '~build/time'
+
 import { prefillChatAvatarIntoStore, prefillUserAvatarIntoStore, useAvatarStore, useBridgeStore, useChatStore, useSettingsStore } from '@tg-search/client'
 import { breakpointsTailwind, useBreakpoints, useDark } from '@vueuse/core'
 import { abbreviatedSha as gitShortSha } from '~build/git'
 import { version as pkgVersion } from '~build/package'
-import buildTime from '~build/time'
 import { storeToRefs } from 'pinia'
 import { VList } from 'virtua/vue'
 import { computed, onMounted, ref, watch } from 'vue'
@@ -15,6 +16,7 @@ import { RouterView, useRoute, useRouter } from 'vue-router'
 import LanguageSelector from '../components/layout/LanguageSelector.vue'
 import SidebarSelector from '../components/layout/SidebarSelector.vue'
 import Avatar from '../components/ui/Avatar.vue'
+
 import { Button } from '../components/ui/Button'
 
 const settingsStore = useSettingsStore()

@@ -11,8 +11,9 @@ import { toast } from 'vue-sonner'
 
 import SearchDialog from '../../components/SearchDialog.vue'
 import Avatar from '../../components/ui/Avatar.vue'
-import { Button } from '../../components/ui/Button'
 import VirtualMessageList from '../../components/VirtualMessageList.vue'
+
+import { Button } from '../../components/ui/Button'
 
 const { t } = useI18n()
 
