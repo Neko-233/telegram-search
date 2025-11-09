@@ -51,6 +51,6 @@ export function registerEntityEventHandlers(
 
     avatarStore.setUserAvatar(data.userId, { blobUrl: url, fileId: data.fileId, mimeType: data.mimeType })
 
-    console.warn('[Avatar] Updated user avatar', { userId: data.userId, fileId: data.fileId })
+    // console.warn('[Avatar] Updated user avatar', { userId: data.userId, fileId: data.fileId })
   })
 }
