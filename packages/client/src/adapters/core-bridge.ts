@@ -4,11 +4,12 @@ import type { WsEventToClient, WsEventToClientData, WsEventToServer, WsEventToSe
 import type { ClientEventHandlerMap, ClientEventHandlerQueueMap } from '../event-handlers'
 import type { SessionContext } from '../stores/useAuth'
 
+import defu from 'defu'
+
 import { initLogger, LoggerFormat, LoggerLevel, useLogger } from '@guiiai/logg'
 import { initConfig, useConfig } from '@tg-search/common'
 import { createCoreInstance, initDrizzle } from '@tg-search/core'
 import { useLocalStorage } from '@vueuse/core'
-import defu from 'defu'
 import { acceptHMRUpdate, defineStore } from 'pinia'
 import { v4 as uuidv4 } from 'uuid'
 import { ref } from 'vue'

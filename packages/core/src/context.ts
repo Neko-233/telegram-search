@@ -10,6 +10,8 @@ import type {
 import { useLogger } from '@guiiai/logg'
 import { EventEmitter } from 'eventemitter3'
 
+import { detectMemoryLeak } from './utils/memory-leak-detector'
+
 export type { CoreEmitter, CoreEvent, CoreEventData, FromCoreEvent, ToCoreEvent } from './types/events'
 
 export type CoreContext = ReturnType<typeof createCoreContext>
@@ -105,6 +107,29 @@ export function createCoreContext() {
     return telegramClient
   }
 
+  // Setup memory leak detection and get cleanup function
+  const cleanupMemoryLeakDetector = detectMemoryLeak(emitter)
+
+  function cleanup() {
+    useLogger().debug('Cleaning up CoreContext')
+
+    // Clean up memory leak detector first
+    cleanupMemoryLeakDetector()
+
+    // Remove all event listeners
+    emitter.removeAllListeners()
+
+    // Clear event sets
+    toCoreEvents.clear()
+    fromCoreEvents.clear()
+
+    // Clear client reference
+    // @ts-expect-error - Allow setting to undefined for cleanup
+    telegramClient = undefined
+
+    useLogger().debug('CoreContext cleaned up')
+  }
+
   wrapEmitterOn(emitter, (event) => {
     useLogger('core:event').withFields({ event }).debug('Core event received')
   })
@@ -122,6 +147,7 @@ export function createCoreContext() {
     setClient,
     getClient: ensureClient,
     withError,
+    cleanup,
   }
 }
 
