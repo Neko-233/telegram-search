@@ -97,7 +97,14 @@ export function createDialogService(ctx: CoreContext) {
    * Fetch dialogs and emit base data. Then asynchronously fetch avatars.
    *
    * This emits `dialog:data` with the list of dialogs immediately.
-   * Avatar bytes are downloaded in the background via `fetchDialogAvatars`.
+   *
+   * Important:
+   * - We intentionally DO NOT auto-prefetch dialog avatars here anymore.
+   *   The client may already have valid cached blobs (IndexedDB/in-memory),
+   *   which would make server-side prefetch a redundant network download.
+   * - The web app uses `ensureChatAvatar` on visible items to request
+   *   missing avatars on demand via `dialog:avatar:fetch`, which is more
+   *   efficient and respects client-side cache validity.
    */
   async function fetchDialogs(): Promise<Result<CoreDialog[]>> {
     // TODO: use invoke api
@@ -156,8 +163,9 @@ export function createDialogService(ctx: CoreContext) {
 
     emitter.emit('dialog:data', { dialogs })
 
-    // Kick off avatar download in background
-    void avatarHelper.fetchDialogAvatars(dialogList, 12).catch(error => logger.withError(error).warn('Failed to fetch dialog avatars'))
+    // Note:
+    // Do not auto-start avatar prefetch here.
+    // The client will request prioritized downloads for missing/expired entries.
 
     return Ok(dialogs)
   }
