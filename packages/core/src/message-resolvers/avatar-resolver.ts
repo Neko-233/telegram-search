@@ -50,7 +50,8 @@ function createAvatarHelper(ctx: CoreContext) {
       // eslint-disable-next-line ts/no-require-imports
       const proc = require('process') as { env?: Record<string, string | undefined> }
       raw = proc?.env?.[name]
-    } catch {
+    }
+    catch {
       raw = undefined
     }
     const n = raw != null ? Number(raw) : Number.NaN
@@ -269,10 +270,13 @@ function createAvatarHelper(ctx: CoreContext) {
    * Supports gramJS BigInteger (`toJSNumber`), native `bigint`, and `number`.
    */
   function getEntityIdNumber(entity: Api.User | Api.Chat | Api.Channel | undefined): number | undefined {
-    if (!entity) return undefined
+    if (!entity)
+      return undefined
     const idVal = (entity as unknown as { id?: unknown }).id
-    if (idVal == null) return undefined
-    if (typeof idVal === 'number') return idVal
+    if (idVal == null)
+      return undefined
+    if (typeof idVal === 'number')
+      return idVal
     if (typeof idVal === 'bigint') {
       const n = Number(idVal)
       return Number.isFinite(n) ? n : undefined
@@ -294,7 +298,8 @@ function createAvatarHelper(ctx: CoreContext) {
    */
   function resolveEntityPhotoMedia(entity: Api.User | Api.Chat | Api.Channel): Api.TypeMessageMedia | undefined {
     const photo = (entity as unknown as { photo?: unknown }).photo
-    if (!photo) return undefined
+    if (!photo)
+      return undefined
     return photo as unknown as Api.TypeMessageMedia
   }
 
@@ -628,16 +633,18 @@ export function createAvatarResolver(ctx: CoreContext): MessageResolver {
     },
   }
 }
-  /**
-   * Remove a key from a tiny-lru cache with compatibility across versions.
-   * Uses `.delete` when available, otherwise `.remove`.
-   */
-  /**
-   * Delete a key from a tiny-lru instance in a version-compatible way.
-   * Supports both v10 (`remove`) and v11+ (`delete`) methods.
-   */
-  function lruDeleteKey(cache: unknown, key: string): void {
-    const c = cache as { delete?: (k: string) => void; remove?: (k: string) => void }
-    if (typeof c.delete === 'function') c.delete(key)
-    else if (typeof c.remove === 'function') c.remove(key)
-  }
+/**
+ * Remove a key from a tiny-lru cache with compatibility across versions.
+ * Uses `.delete` when available, otherwise `.remove`.
+ */
+/**
+ * Delete a key from a tiny-lru instance in a version-compatible way.
+ * Supports both v10 (`remove`) and v11+ (`delete`) methods.
+ */
+function lruDeleteKey(cache: unknown, key: string): void {
+  const c = cache as { delete?: (k: string) => void, remove?: (k: string) => void }
+  if (typeof c.delete === 'function')
+    c.delete(key)
+  else if (typeof c.remove === 'function')
+    c.remove(key)
+}
