@@ -8,9 +8,12 @@ import type { CoreContext } from '../context'
 import { Buffer } from 'buffer'
 
 import { useLogger } from '@guiiai/logg'
+import { newQueue } from '@henrygd/queue'
 import { Ok } from '@unbird/result'
 import { Api } from 'telegram'
 import { lru } from 'tiny-lru'
+
+import { AVATAR_CACHE_TTL, AVATAR_DOWNLOAD_CONCURRENCY, MAX_AVATAR_CACHE_SIZE } from '../constants'
 
 /**
  * Shared avatar cache entry.
@@ -20,13 +23,7 @@ interface AvatarCacheEntry {
   fileId?: string
   mimeType?: string
   byte?: Buffer
-  updatedAt?: number
-  // Soft expiration for SWR; after this time data can be served stale
-  softExpiresAt?: number
-  // Hard expiration; after this time data must be considered invalid
-  hardExpiresAt?: number
 }
-
 /**
  * Per-context singleton store for avatar helper to avoid duplicated instances.
  */
@@ -72,178 +69,17 @@ function createAvatarHelper(ctx: CoreContext) {
 
   const REFRESH_JITTER_MS = getEnvNumber('AVATAR_REFRESH_JITTER_MS', 500)
 
-  // In-memory caches
-  const userAvatarCache = lru<AvatarCacheEntry>(USER_ENTRY_BUDGET, USER_HARD_TTL_MS, false)
-  const chatAvatarCache = lru<AvatarCacheEntry>(CHAT_ENTRY_BUDGET, CHAT_HARD_TTL_MS, false)
-  const dialogEntityCache = new Map<number, Api.User | Api.Chat | Api.Channel>()
+  // 使用 tiny-lru 实现 LRU 缓存，自动过期和淘汰
+  const userAvatarCache = lru<AvatarCacheEntry>(MAX_AVATAR_CACHE_SIZE, AVATAR_CACHE_TTL)
+  const chatAvatarCache = lru<AvatarCacheEntry>(MAX_AVATAR_CACHE_SIZE, AVATAR_CACHE_TTL)
+  const dialogEntityCache = lru<Api.User | Api.Chat | Api.Channel>(MAX_AVATAR_CACHE_SIZE, AVATAR_CACHE_TTL)
 
   // In-flight dedup sets
   const inflightUsers = new Set<string>()
   const inflightChats = new Set<number>()
 
-  // Global cache keyed by avatar fileId to deduplicate across user/chat paths
-  // Stores the latest bytes and mime type to allow reuse without re-downloading
-  const fileIdCache = lru<{ byte: Buffer, mimeType: string, updatedAt: number }>(FILEID_MAX_ENTRIES, 0, false)
-  // In-flight downloads keyed by fileId, so concurrent requests share a single download promise
-  const inflightFileIds = new Map<string, Promise<{ byte: Buffer, mimeType: string }>>()
-  // TTL/meta cache for fileId entries
-  const fileIdMetaCache = lru<{ softExpiresAt: number, hardExpiresAt: number }>(FILEID_MAX_ENTRIES, 0, false)
-  // Scheduled refresh timers keyed by fileId for cancellation on eviction
-  const fileIdRefreshTimers = new Map<string, ReturnType<typeof setTimeout>>()
-
-  // Global concurrency limiter state for user avatar fetches
-  // Limit how many user avatar downloads run at the same time
-  const USER_CONCURRENCY_LIMIT = 4
-  const userQueue: Array<() => Promise<void>> = []
-  let userActiveCount = 0
-
-  /**
-   * Drain the user avatar queue respecting the global concurrency limit.
-   * Starts queued tasks until `USER_CONCURRENCY_LIMIT` is reached.
-   *
-   * Note: queued tasks handle errors internally (try/catch inside the task)
-   * and resolve in finally; their Promise does not reject. We therefore avoid
-   * attaching an external `.catch()` here to reduce confusion.
-   */
-  function drainUserQueue(): void {
-    while (userActiveCount < USER_CONCURRENCY_LIMIT && userQueue.length > 0) {
-      const task = userQueue.shift()!
-      userActiveCount++
-      void task()
-    }
-  }
-
-  /**
-   * Get current timestamp in milliseconds.
-   */
-  function now(): number {
-    return Date.now()
-  }
-
-  /**
-   * Compute entry metadata for TTLs.
-   */
-  function makeMetaForBytes(byte: Buffer, softTtlMs: number, hardTtlMs: number, baseNow = now()): Pick<AvatarCacheEntry, 'updatedAt' | 'softExpiresAt' | 'hardExpiresAt'> {
-    return {
-      updatedAt: baseNow,
-      softExpiresAt: baseNow + softTtlMs,
-      hardExpiresAt: baseNow + hardTtlMs,
-    }
-  }
-
-  /**
-   * Cancel a scheduled refresh timer for a given fileId if present.
-   */
-  function clearFileIdRefreshTimer(fileId: string): void {
-    const timer = fileIdRefreshTimers.get(fileId)
-    if (timer) {
-      clearTimeout(timer)
-      fileIdRefreshTimers.delete(fileId)
-    }
-  }
-
-  /**
-   * Put or update a fileId cache entry's TTL meta.
-   */
-  function putFileIdMeta(fileId: string, byte: Buffer): void {
-    const meta = makeMetaForBytes(byte, FILEID_SOFT_TTL_MS, FILEID_HARD_TTL_MS)
-    fileIdMetaCache.set(fileId, { softExpiresAt: meta.softExpiresAt!, hardExpiresAt: meta.hardExpiresAt! })
-  }
-
-  /**
-   * Schedule a background refresh for a given fileId using jitter, deduped by fileId.
-   * Does not interrupt foreground work; refreshes bytes and TTLs when complete.
-   */
-  function scheduleFileIdRefresh(fileId: string, download: () => Promise<Buffer | undefined>): void {
-    const delay = Math.max(0, Math.floor(Math.random() * REFRESH_JITTER_MS))
-    if (fileIdRefreshTimers.has(fileId) || inflightFileIds.has(fileId))
-      return
-    const timer = setTimeout(async () => {
-      // Remove the timer reference immediately when firing to avoid stale entries
-      fileIdRefreshTimers.delete(fileId)
-      // Skip refresh if the entry was evicted before the timer fired
-      if (!fileIdCache.get(fileId) && !fileIdMetaCache.get(fileId))
-        return
-      if (inflightFileIds.has(fileId))
-        return
-      const p = (async () => {
-        try {
-          const byte = await download()
-          if (!byte)
-            throw new Error('avatar-byte-missing')
-          const cached = fileIdCache.get(fileId)
-          const mimeType = cached?.mimeType ?? 'image/jpeg'
-          fileIdCache.set(fileId, { byte, mimeType, updatedAt: now() })
-          putFileIdMeta(fileId, byte)
-          return { byte, mimeType }
-        }
-        catch (err) {
-          logger.withError(err as Error).debug('Background refresh failed')
-          throw err
-        }
-      })()
-      inflightFileIds.set(fileId, p)
-      Promise.resolve(p).finally(() => inflightFileIds.delete(fileId))
-    }, delay)
-    fileIdRefreshTimers.set(fileId, timer)
-  }
-
-  // Removed manual prune; tiny-lru handles capacity & eviction automatically.
-
-  /**
-   * Ensure avatar bytes are available for a given fileId using a global cache
-   * and in-flight deduplication.
-   *
-   * Semantics:
-   * - Returns a `{ byte, mimeType }` object (never `undefined`).
-   * - If cached, returns immediately.
-   * - Otherwise, starts a single shared download and caches the result.
-   * - Soft TTL: serves stale and schedules a background refresh.
-   * - Hard TTL: bypasses cache and forces a foreground download.
-   * - On failure (e.g., no bytes), throws; callers should use try/catch.
-   * - Always clears the in-flight entry in `finally` to avoid deadlocks.
-   */
-  async function ensureFileIdBytes(
-    fileId: string,
-    download: () => Promise<Buffer | undefined>,
-  ): Promise<{ byte: Buffer, mimeType: string }> {
-    const cached = fileIdCache.get(fileId)
-    if (cached) {
-      const meta = fileIdMetaCache.get(fileId)
-      const nowMs = now()
-      if (meta && nowMs > meta.hardExpiresAt) {
-        lruDeleteKey(fileIdCache, fileId)
-        lruDeleteKey(fileIdMetaCache, fileId)
-        clearFileIdRefreshTimer(fileId)
-      }
-      else {
-        if (meta && nowMs > meta.softExpiresAt)
-          scheduleFileIdRefresh(fileId, download)
-        return { byte: cached.byte, mimeType: cached.mimeType }
-      }
-    }
-
-    let p = inflightFileIds.get(fileId)
-    if (!p) {
-      p = (async () => {
-        const byte = await download()
-        if (!byte)
-          throw new Error('avatar-byte-missing')
-        const mimeType = 'image/jpeg'
-        fileIdCache.set(fileId, { byte, mimeType, updatedAt: now() })
-        putFileIdMeta(fileId, byte)
-        return { byte, mimeType }
-      })()
-      inflightFileIds.set(fileId, p)
-    }
-
-    try {
-      return await p
-    }
-    finally {
-      inflightFileIds.delete(fileId)
-    }
-  }
+  // 并发控制队列
+  const downloadQueue = newQueue(AVATAR_DOWNLOAD_CONCURRENCY)
 
   /**
    * Resolve avatar fileId for a Telegram entity.
@@ -306,30 +142,34 @@ function createAvatarHelper(ctx: CoreContext) {
   /**
    * Download small profile photo for the given entity.
    * Falls back to `downloadMedia` when `downloadProfilePhoto` fails.
+   * 使用队列控制并发
    */
   async function downloadSmallAvatar(entity: Api.User | Api.Chat | Api.Channel): Promise<Buffer | undefined> {
-    let buffer: Buffer | Uint8Array | undefined
-    try {
-      buffer = await getClient().downloadProfilePhoto(entity, { isBig: false }) as Buffer
-    }
-    catch (err) {
-      logger.withError(err as Error).debug('downloadProfilePhoto failed, trying fallback')
-      const photoMedia = resolveEntityPhotoMedia(entity)
-      if (photoMedia) {
-        try {
-          buffer = await getClient().downloadMedia(photoMedia, { thumb: -1 }) as Buffer
-        }
-        catch (err2) {
-          logger.withError(err2 as Error).debug('downloadMedia fallback failed')
+    return downloadQueue.add(async () => {
+      let buffer: Buffer | Uint8Array | undefined
+      try {
+        buffer = await getClient().downloadProfilePhoto(entity, { isBig: false }) as Buffer
+      }
+      catch (err) {
+        logger.withError(err as Error).debug('downloadProfilePhoto failed, trying fallback')
+        // eslint-disable-next-line ts/no-explicit-any
+        const photo = (entity as Record<string, any>).photo
+        if (photo) {
+          try {
+            buffer = await getClient().downloadMedia(photo, { thumb: -1 }) as Buffer
+          }
+          catch (err2) {
+            logger.withError(err2 as Error).debug('downloadMedia fallback failed')
+          }
         }
       }
-    }
 
-    if (!buffer)
-      return undefined
+      if (!buffer)
+        return undefined
 
-    // Ensure Buffer for JSON-safe serialization
-    return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
+      // Ensure Buffer for JSON-safe serialization
+      return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
+    })
   }
 
   /**
@@ -404,13 +244,10 @@ function createAvatarHelper(ctx: CoreContext) {
         return
       }
 
-      const result = await ensureFileIdBytes(fileId, async () => downloadSmallAvatar(entity))
+      const mimeType = 'image/jpeg'
+      userAvatarCache.set(key, { fileId, mimeType, byte })
 
-      {
-        const meta = makeMetaForBytes(result.byte, USER_SOFT_TTL_MS, USER_HARD_TTL_MS)
-        userAvatarCache.set(key, { fileId, mimeType: result.mimeType, byte: result.byte, updatedAt: meta.updatedAt, softExpiresAt: meta.softExpiresAt, hardExpiresAt: meta.hardExpiresAt })
-      }
-      emitter.emit('entity:avatar:data', { userId: key, byte: result.byte, mimeType: result.mimeType, fileId })
+      emitter.emit('entity:avatar:data', { userId: key, byte, mimeType, fileId })
     }
     catch (error) {
       logger.withError(error as Error).warn('Failed to fetch avatar for user')
@@ -436,9 +273,10 @@ function createAvatarHelper(ctx: CoreContext) {
         entity = await getClient().getEntity(String(chatId)) as Api.User | Api.Chat | Api.Channel
         // Cache entity for future single fetches
         try {
-          const idN = getEntityIdNumber(entity)
-          if (idN)
-            dialogEntityCache.set(idN, entity)
+          // eslint-disable-next-line ts/no-explicit-any
+          if (entity && (entity as any).id?.toJSNumber)
+            // eslint-disable-next-line ts/no-explicit-any
+            dialogEntityCache.set((entity as any).id.toJSNumber(), entity)
         }
         catch {}
       }
@@ -474,23 +312,10 @@ function createAvatarHelper(ctx: CoreContext) {
         return
       }
 
-      const result = await ensureFileIdBytes(fileId, async () => downloadSmallAvatar(entity))
+      const mimeType = 'image/jpeg'
+      chatAvatarCache.set(idNum, { fileId, mimeType, byte })
 
-      {
-        const metaChat = makeMetaForBytes(result.byte, CHAT_SOFT_TTL_MS, CHAT_HARD_TTL_MS)
-        chatAvatarCache.set(String(idNum), { fileId, mimeType: result.mimeType, byte: result.byte, updatedAt: metaChat.updatedAt, softExpiresAt: metaChat.softExpiresAt, hardExpiresAt: metaChat.hardExpiresAt })
-      }
-      // If the entity is a User, also update user-side cache for cross-path reuse
-      try {
-        const uidNum = getEntityIdNumber(entity)
-        if (entity instanceof Api.User && uidNum != null) {
-          const uid = String(uidNum)
-          const metaUser = makeMetaForBytes(result.byte, USER_SOFT_TTL_MS, USER_HARD_TTL_MS)
-          userAvatarCache.set(uid, { fileId, mimeType: result.mimeType, byte: result.byte, updatedAt: metaUser.updatedAt, softExpiresAt: metaUser.softExpiresAt, hardExpiresAt: metaUser.hardExpiresAt })
-        }
-      }
-      catch {}
-      emitter.emit('dialog:avatar:data', { chatId: idNum, byte: result.byte, mimeType: result.mimeType, fileId })
+      emitter.emit('dialog:avatar:data', { chatId: idNum, byte, mimeType, fileId })
     }
     catch (error) {
       logger.withError(error as Error).warn('Failed to fetch single avatar for dialog')
@@ -558,24 +383,10 @@ function createAvatarHelper(ctx: CoreContext) {
             continue
           }
 
-          const result = await ensureFileIdBytes(fileId, async () => downloadSmallAvatar(dialog.entity as Api.User | Api.Chat | Api.Channel))
+          const mimeType = 'image/jpeg'
+          chatAvatarCache.set(id, { fileId, mimeType, byte })
 
-          {
-            const metaChat = makeMetaForBytes(result.byte, CHAT_SOFT_TTL_MS, CHAT_HARD_TTL_MS)
-            chatAvatarCache.set(String(id), { fileId, mimeType: result.mimeType, byte: result.byte, updatedAt: metaChat.updatedAt, softExpiresAt: metaChat.softExpiresAt, hardExpiresAt: metaChat.hardExpiresAt })
-          }
-          // If entity is a User, also update user-side cache for cross-path reuse
-          try {
-            const ent = dialog.entity as Api.User | Api.Chat | Api.Channel
-            const uidNum = getEntityIdNumber(ent)
-            if (ent instanceof Api.User && uidNum != null) {
-              const uid = String(uidNum)
-              const metaUser = makeMetaForBytes(result.byte, USER_SOFT_TTL_MS, USER_HARD_TTL_MS)
-              userAvatarCache.set(uid, { fileId, mimeType: result.mimeType, byte: result.byte, updatedAt: metaUser.updatedAt, softExpiresAt: metaUser.softExpiresAt, hardExpiresAt: metaUser.hardExpiresAt })
-            }
-          }
-          catch {}
-          emitter.emit('dialog:avatar:data', { chatId: id, byte: result.byte, mimeType: result.mimeType, fileId })
+          emitter.emit('dialog:avatar:data', { chatId: id, byte, mimeType, fileId })
         }
         catch (error) {
           logger.withError(error as Error).warn('Failed to fetch avatar for dialog')
@@ -592,6 +403,20 @@ function createAvatarHelper(ctx: CoreContext) {
     fetchDialogAvatar,
     fetchDialogAvatars,
     dialogEntityCache,
+    // 导出清理方法供外部调用
+    clearCache: () => {
+      userAvatarCache.clear()
+      chatAvatarCache.clear()
+      dialogEntityCache.clear()
+      logger.log('Avatar cache manually cleared')
+    },
+    getCacheStats: () => ({
+      userAvatars: userAvatarCache.size,
+      chatAvatars: chatAvatarCache.size,
+      entities: dialogEntityCache.size,
+      maxSize: MAX_AVATAR_CACHE_SIZE,
+      ttl: `${AVATAR_CACHE_TTL / 1000}s`,
+    }),
   }
 }
 
@@ -626,7 +451,13 @@ export function createAvatarResolver(ctx: CoreContext): MessageResolver {
       // Deduplicate by sender id to avoid repeated downloads within the same batch
       const uniqueUserIds = Array.from(new Set(opts.messages.map(m => String(m.fromId)).filter(Boolean)))
 
+      // 使用并发控制，避免同时下载过多头像
+      // fetchUserAvatar 内部已经通过 downloadQueue 控制了并发
       await Promise.all(uniqueUserIds.map(id => helper.fetchUserAvatar(id)))
+
+      // 记录缓存状态（调试用）
+      const stats = helper.getCacheStats()
+      logger.debug('Avatar cache stats', stats)
 
       // No message mutations to persist
       return Ok([] as never[])

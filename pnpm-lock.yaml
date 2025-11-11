@@ -394,7 +394,7 @@ importers:
         specifier: ^2.26.22
         version: 2.26.22
       tiny-lru:
-        specifier: ^11.4.5
+        specifier: ^11.3.2
         version: 11.4.5
       uuid:
         specifier: ^13.0.0

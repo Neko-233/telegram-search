@@ -6,8 +6,8 @@ import type { TakeoutService } from '../services'
 import { useLogger } from '@guiiai/logg'
 import { usePagination } from '@tg-search/common'
 
-import { MESSAGE_PROCESS_BATCH_SIZE } from '../constants'
 import { getChatMessageStatsByChatId } from '../models'
+import { getDynamicBatchSize, hasMedia } from '../utils/batch'
 import { createTask } from '../utils/task'
 
 export function registerTakeoutEventHandlers(ctx: CoreContext) {
@@ -69,12 +69,20 @@ export function registerTakeoutEventHandlers(ctx: CoreContext) {
 
             messages.push(message)
 
-            if (messages.length >= MESSAGE_PROCESS_BATCH_SIZE) {
+            const batchSize = getDynamicBatchSize(messages)
+            if (messages.length >= batchSize) {
               // Check abort signal before emitting
               if (task.abortController.signal.aborted) {
                 logger.verbose('Full sync aborted during batch processing')
                 break
               }
+
+              const mediaCount = messages.filter(hasMedia).length
+              logger.withFields({
+                total: messages.length,
+                withMedia: mediaCount,
+                batchSize,
+              }).debug('Processing takeout batch')
 
               emitter.emit('message:process', { messages, isTakeout: true })
               messages = []
@@ -119,12 +127,20 @@ export function registerTakeoutEventHandlers(ctx: CoreContext) {
 
               messages.push(message)
 
-              if (messages.length >= MESSAGE_PROCESS_BATCH_SIZE) {
+              const batchSize = getDynamicBatchSize(messages)
+              if (messages.length >= batchSize) {
                 // Check abort signal before emitting
                 if (task.abortController.signal.aborted) {
                   logger.verbose('Fallback full sync aborted during batch processing')
                   break
                 }
+
+                const mediaCount = messages.filter(hasMedia).length
+                logger.withFields({
+                  total: messages.length,
+                  withMedia: mediaCount,
+                  batchSize,
+                }).debug('Processing fallback sync batch')
 
                 emitter.emit('message:process', { messages, isTakeout: true })
                 messages = []
@@ -195,12 +211,20 @@ export function registerTakeoutEventHandlers(ctx: CoreContext) {
               backwardMessageCount++
               totalProcessed++
 
-              if (messages.length >= MESSAGE_PROCESS_BATCH_SIZE) {
+              const batchSize = getDynamicBatchSize(messages)
+              if (messages.length >= batchSize) {
                 // Check abort signal before emitting
                 if (task.abortController.signal.aborted) {
                   logger.verbose('Backward fill aborted during batch processing')
                   break
                 }
+
+                const mediaCount = messages.filter(hasMedia).length
+                logger.withFields({
+                  total: messages.length,
+                  withMedia: mediaCount,
+                  batchSize,
+                }).debug('Processing backward fill batch')
 
                 emitter.emit('message:process', { messages, isTakeout: true })
                 messages = []
@@ -247,12 +271,20 @@ export function registerTakeoutEventHandlers(ctx: CoreContext) {
               forwardMessageCount++
               totalProcessed++
 
-              if (messages.length >= MESSAGE_PROCESS_BATCH_SIZE) {
+              const batchSize = getDynamicBatchSize(messages)
+              if (messages.length >= batchSize) {
                 // Check abort signal before emitting
                 if (task.abortController.signal.aborted) {
                   logger.verbose('Forward fill aborted during batch processing')
                   break
                 }
+
+                const mediaCount = messages.filter(hasMedia).length
+                logger.withFields({
+                  total: messages.length,
+                  withMedia: mediaCount,
+                  batchSize,
+                }).debug('Processing forward fill batch')
 
                 emitter.emit('message:process', { messages, isTakeout: true })
                 messages = []
