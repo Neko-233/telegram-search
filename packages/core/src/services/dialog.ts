@@ -159,22 +159,6 @@ export function createDialogService(ctx: CoreContext) {
     return Ok(dialogs)
   }
 
-  // Removed legacy local `fetchDialogAvatars` implementation.
-  // Avatars are now fetched via centralized AvatarHelper for consistency.
-
-  /**
-   * Fetch a single dialog's small avatar immediately and emit incremental update.
-   *
-   * Logic:
-   * - Resolve dialog entity from in-memory map or via Telegram API.
-   * - If cached and `fileId` unchanged, skip redundant emit.
-   * - Dedupe concurrent requests for the same `chatId` to avoid wasted work.
-   * - Download small avatar bytes and emit `dialog:avatar:data`.
-   */
-  /**
-   * Fetch a single dialog avatar via centralized AvatarHelper.
-   * Reuses dialog entity cache populated during fetchDialogs when available.
-   */
   async function fetchSingleDialogAvatar(chatId: string | number) {
     await avatarHelper.fetchDialogAvatar(chatId, { entityOverride: dialogEntities.get(typeof chatId === 'string' ? Number(chatId) : chatId) })
   }
