@@ -263,17 +263,6 @@ function createAvatarHelper(ctx: CoreContext) {
   }
 
   /**
-   * Convert an entity's `photo` to a media input acceptable by `downloadMedia`.
-   * Falls back to `undefined` when the shape is not compatible.
-   */
-  function resolveEntityPhotoMedia(entity: Api.User | Api.Chat | Api.Channel): Api.TypeMessageMedia | undefined {
-    const photo = (entity as unknown as { photo?: unknown }).photo
-    if (!photo)
-      return undefined
-    return photo as unknown as Api.TypeMessageMedia
-  }
-
-  /**
    * Download small profile photo for the given entity.
    * Falls back to `downloadMedia` when `downloadProfilePhoto` fails.
    * 使用队列控制并发
@@ -285,10 +274,10 @@ function createAvatarHelper(ctx: CoreContext) {
     }
     catch (err) {
       logger.withError(err as Error).debug('downloadProfilePhoto failed, trying fallback')
-      const photoMedia = resolveEntityPhotoMedia(entity)
-      if (photoMedia) {
+      const photo = (entity as any).photo
+      if (photo) {
         try {
-          buffer = await getClient().downloadMedia(photoMedia, { thumb: -1 }) as Buffer
+          buffer = await getClient().downloadMedia(photo, { thumb: -1 }) as Buffer
         }
         catch (err2) {
           logger.withError(err2 as Error).debug('downloadMedia fallback failed')
