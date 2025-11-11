@@ -23,11 +23,14 @@ interface AvatarCacheEntry {
   fileId?: string
   mimeType?: string
   byte?: Buffer
+<<<<<<< HEAD
   updatedAt?: number
   // Soft expiration for SWR; after this time data can be served stale
   softExpiresAt?: number
   // Hard expiration; after this time data must be considered invalid
   hardExpiresAt?: number
+=======
+>>>>>>> 032dd2d (fix: memory leak (#444))
 }
 /**
  * Per-context singleton store for avatar helper to avoid duplicated instances.
@@ -74,15 +77,23 @@ function createAvatarHelper(ctx: CoreContext) {
 
   const REFRESH_JITTER_MS = getEnvNumber('AVATAR_REFRESH_JITTER_MS', 500)
 
+<<<<<<< HEAD
   // In-memory caches
   const userAvatarCache = lru<AvatarCacheEntry>(USER_ENTRY_BUDGET, USER_HARD_TTL_MS, false)
   const chatAvatarCache = lru<AvatarCacheEntry>(CHAT_ENTRY_BUDGET, CHAT_HARD_TTL_MS, false)
   const dialogEntityCache = new Map<number, Api.User | Api.Chat | Api.Channel>()
+=======
+  // 使用 tiny-lru 实现 LRU 缓存，自动过期和淘汰
+  const userAvatarCache = lru<AvatarCacheEntry>(MAX_AVATAR_CACHE_SIZE, AVATAR_CACHE_TTL)
+  const chatAvatarCache = lru<AvatarCacheEntry>(MAX_AVATAR_CACHE_SIZE, AVATAR_CACHE_TTL)
+  const dialogEntityCache = lru<Api.User | Api.Chat | Api.Channel>(MAX_AVATAR_CACHE_SIZE, AVATAR_CACHE_TTL)
+>>>>>>> 032dd2d (fix: memory leak (#444))
 
   // In-flight dedup sets
   const inflightUsers = new Set<string>()
   const inflightChats = new Set<number>()
 
+<<<<<<< HEAD
   // Global cache keyed by avatar fileId to deduplicate across user/chat paths
   // Stores the latest bytes and mime type to allow reuse without re-downloading
   const fileIdCache = lru<{ byte: Buffer, mimeType: string, updatedAt: number }>(FILEID_MAX_ENTRIES, 0, false)
@@ -246,6 +257,10 @@ function createAvatarHelper(ctx: CoreContext) {
       inflightFileIds.delete(fileId)
     }
   }
+=======
+  // 并发控制队列
+  const downloadQueue = newQueue(AVATAR_DOWNLOAD_CONCURRENCY)
+>>>>>>> 032dd2d (fix: memory leak (#444))
 
   /**
    * Resolve avatar fileId for a Telegram entity.
@@ -297,30 +312,34 @@ function createAvatarHelper(ctx: CoreContext) {
   /**
    * Download small profile photo for the given entity.
    * Falls back to `downloadMedia` when `downloadProfilePhoto` fails.
+   * 使用队列控制并发
    */
   async function downloadSmallAvatar(entity: Api.User | Api.Chat | Api.Channel): Promise<Buffer | undefined> {
-    let buffer: Buffer | Uint8Array | undefined
-    try {
-      buffer = await getClient().downloadProfilePhoto(entity, { isBig: false }) as Buffer
-    }
-    catch (err) {
-      logger.withError(err as Error).debug('downloadProfilePhoto failed, trying fallback')
-      const photo = (entity as any).photo
-      if (photo) {
-        try {
-          buffer = await getClient().downloadMedia(photo, { thumb: -1 }) as Buffer
-        }
-        catch (err2) {
-          logger.withError(err2 as Error).debug('downloadMedia fallback failed')
+    return downloadQueue.add(async () => {
+      let buffer: Buffer | Uint8Array | undefined
+      try {
+        buffer = await getClient().downloadProfilePhoto(entity, { isBig: false }) as Buffer
+      }
+      catch (err) {
+        logger.withError(err as Error).debug('downloadProfilePhoto failed, trying fallback')
+        // eslint-disable-next-line ts/no-explicit-any
+        const photo = (entity as Record<string, any>).photo
+        if (photo) {
+          try {
+            buffer = await getClient().downloadMedia(photo, { thumb: -1 }) as Buffer
+          }
+          catch (err2) {
+            logger.withError(err2 as Error).debug('downloadMedia fallback failed')
+          }
         }
       }
-    }
 
-    if (!buffer)
-      return undefined
+      if (!buffer)
+        return undefined
 
-    // Ensure Buffer for JSON-safe serialization
-    return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
+      // Ensure Buffer for JSON-safe serialization
+      return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
+    })
   }
 
   /**
@@ -395,6 +414,7 @@ function createAvatarHelper(ctx: CoreContext) {
         return
       }
 
+<<<<<<< HEAD
       const result = await ensureFileIdBytes(fileId, async () => downloadSmallAvatar(entity))
 
       {
@@ -402,6 +422,12 @@ function createAvatarHelper(ctx: CoreContext) {
         userAvatarCache.set(key, { fileId, mimeType: result.mimeType, byte: result.byte, updatedAt: meta.updatedAt, softExpiresAt: meta.softExpiresAt, hardExpiresAt: meta.hardExpiresAt })
       }
       emitter.emit('entity:avatar:data', { userId: key, byte: result.byte, mimeType: result.mimeType, fileId })
+=======
+      const mimeType = 'image/jpeg'
+      userAvatarCache.set(key, { fileId, mimeType, byte })
+
+      emitter.emit('entity:avatar:data', { userId: key, byte, mimeType, fileId })
+>>>>>>> 032dd2d (fix: memory leak (#444))
     }
     catch (error) {
       logger.withError(error as Error).warn('Failed to fetch avatar for user')
@@ -466,6 +492,7 @@ function createAvatarHelper(ctx: CoreContext) {
         return
       }
 
+<<<<<<< HEAD
       const result = await ensureFileIdBytes(fileId, async () => downloadSmallAvatar(entity))
 
       {
@@ -483,6 +510,12 @@ function createAvatarHelper(ctx: CoreContext) {
       }
       catch {}
       emitter.emit('dialog:avatar:data', { chatId: idNum, byte: result.byte, mimeType: result.mimeType, fileId })
+=======
+      const mimeType = 'image/jpeg'
+      chatAvatarCache.set(idNum, { fileId, mimeType, byte })
+
+      emitter.emit('dialog:avatar:data', { chatId: idNum, byte, mimeType, fileId })
+>>>>>>> 032dd2d (fix: memory leak (#444))
     }
     catch (error) {
       logger.withError(error as Error).warn('Failed to fetch single avatar for dialog')
@@ -550,6 +583,7 @@ function createAvatarHelper(ctx: CoreContext) {
             continue
           }
 
+<<<<<<< HEAD
           const result = await ensureFileIdBytes(fileId, async () => downloadSmallAvatar(dialog.entity as Api.User | Api.Chat | Api.Channel))
 
           {
@@ -568,6 +602,12 @@ function createAvatarHelper(ctx: CoreContext) {
           }
           catch {}
           emitter.emit('dialog:avatar:data', { chatId: id, byte: result.byte, mimeType: result.mimeType, fileId })
+=======
+          const mimeType = 'image/jpeg'
+          chatAvatarCache.set(id, { fileId, mimeType, byte })
+
+          emitter.emit('dialog:avatar:data', { chatId: id, byte, mimeType, fileId })
+>>>>>>> 032dd2d (fix: memory leak (#444))
         }
         catch (error) {
           logger.withError(error as Error).warn('Failed to fetch avatar for dialog')
