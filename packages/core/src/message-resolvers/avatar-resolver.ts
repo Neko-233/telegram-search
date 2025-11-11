@@ -8,8 +8,12 @@ import type { CoreContext } from '../context'
 import { Buffer } from 'buffer'
 
 import { useLogger } from '@guiiai/logg'
+import { newQueue } from '@henrygd/queue'
 import { Ok } from '@unbird/result'
 import { Api } from 'telegram'
+import { lru } from 'tiny-lru'
+
+import { AVATAR_CACHE_TTL, AVATAR_DOWNLOAD_CONCURRENCY, MAX_AVATAR_CACHE_SIZE } from '../constants'
 
 /**
  * Shared avatar cache entry.
@@ -19,9 +23,7 @@ interface AvatarCacheEntry {
   fileId?: string
   mimeType?: string
   byte?: Buffer
-  updatedAt?: number
 }
-
 /**
  * Per-context singleton store for avatar helper to avoid duplicated instances.
  */
@@ -35,14 +37,17 @@ function createAvatarHelper(ctx: CoreContext) {
   const logger = useLogger('core:resolver:avatar')
   const { getClient, emitter } = ctx
 
-  // In-memory caches
-  const userAvatarCache = new Map<string, AvatarCacheEntry>()
-  const chatAvatarCache = new Map<number, AvatarCacheEntry>()
-  const dialogEntityCache = new Map<number, Api.User | Api.Chat | Api.Channel>()
+  // 使用 tiny-lru 实现 LRU 缓存，自动过期和淘汰
+  const userAvatarCache = lru<AvatarCacheEntry>(MAX_AVATAR_CACHE_SIZE, AVATAR_CACHE_TTL)
+  const chatAvatarCache = lru<AvatarCacheEntry>(MAX_AVATAR_CACHE_SIZE, AVATAR_CACHE_TTL)
+  const dialogEntityCache = lru<Api.User | Api.Chat | Api.Channel>(MAX_AVATAR_CACHE_SIZE, AVATAR_CACHE_TTL)
 
   // In-flight dedup sets
   const inflightUsers = new Set<string>()
   const inflightChats = new Set<number>()
+
+  // 并发控制队列
+  const downloadQueue = newQueue(AVATAR_DOWNLOAD_CONCURRENCY)
 
   /**
    * Resolve avatar fileId for a Telegram entity.
@@ -67,30 +72,34 @@ function createAvatarHelper(ctx: CoreContext) {
   /**
    * Download small profile photo for the given entity.
    * Falls back to `downloadMedia` when `downloadProfilePhoto` fails.
+   * 使用队列控制并发
    */
   async function downloadSmallAvatar(entity: Api.User | Api.Chat | Api.Channel): Promise<Buffer | undefined> {
-    let buffer: Buffer | Uint8Array | undefined
-    try {
-      buffer = await getClient().downloadProfilePhoto(entity, { isBig: false }) as Buffer
-    }
-    catch (err) {
-      logger.withError(err as Error).debug('downloadProfilePhoto failed, trying fallback')
-      const photo = (entity as any).photo
-      if (photo) {
-        try {
-          buffer = await getClient().downloadMedia(photo, { thumb: -1 }) as Buffer
-        }
-        catch (err2) {
-          logger.withError(err2 as Error).debug('downloadMedia fallback failed')
+    return downloadQueue.add(async () => {
+      let buffer: Buffer | Uint8Array | undefined
+      try {
+        buffer = await getClient().downloadProfilePhoto(entity, { isBig: false }) as Buffer
+      }
+      catch (err) {
+        logger.withError(err as Error).debug('downloadProfilePhoto failed, trying fallback')
+        // eslint-disable-next-line ts/no-explicit-any
+        const photo = (entity as Record<string, any>).photo
+        if (photo) {
+          try {
+            buffer = await getClient().downloadMedia(photo, { thumb: -1 }) as Buffer
+          }
+          catch (err2) {
+            logger.withError(err2 as Error).debug('downloadMedia fallback failed')
+          }
         }
       }
-    }
 
-    if (!buffer)
-      return undefined
+      if (!buffer)
+        return undefined
 
-    // Ensure Buffer for JSON-safe serialization
-    return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
+      // Ensure Buffer for JSON-safe serialization
+      return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
+    })
   }
 
   /**
@@ -123,7 +132,8 @@ function createAvatarHelper(ctx: CoreContext) {
       }
 
       const mimeType = 'image/jpeg'
-      userAvatarCache.set(key, { fileId, mimeType, byte, updatedAt: Date.now() })
+      userAvatarCache.set(key, { fileId, mimeType, byte })
+
       emitter.emit('entity:avatar:data', { userId: key, byte, mimeType, fileId })
     }
     catch (error) {
@@ -153,7 +163,9 @@ function createAvatarHelper(ctx: CoreContext) {
         entity = await getClient().getEntity(String(chatId)) as Api.User | Api.Chat | Api.Channel
         // Cache entity for future single fetches
         try {
+          // eslint-disable-next-line ts/no-explicit-any
           if (entity && (entity as any).id?.toJSNumber)
+            // eslint-disable-next-line ts/no-explicit-any
             dialogEntityCache.set((entity as any).id.toJSNumber(), entity)
         }
         catch {}
@@ -175,7 +187,8 @@ function createAvatarHelper(ctx: CoreContext) {
       }
 
       const mimeType = 'image/jpeg'
-      chatAvatarCache.set(idNum, { fileId, mimeType, byte, updatedAt: Date.now() })
+      chatAvatarCache.set(idNum, { fileId, mimeType, byte })
+
       emitter.emit('dialog:avatar:data', { chatId: idNum, byte, mimeType, fileId })
     }
     catch (error) {
@@ -227,7 +240,8 @@ function createAvatarHelper(ctx: CoreContext) {
           }
 
           const mimeType = 'image/jpeg'
-          chatAvatarCache.set(id, { fileId, mimeType, byte, updatedAt: Date.now() })
+          chatAvatarCache.set(id, { fileId, mimeType, byte })
+
           emitter.emit('dialog:avatar:data', { chatId: id, byte, mimeType, fileId })
         }
         catch (error) {
@@ -245,6 +259,20 @@ function createAvatarHelper(ctx: CoreContext) {
     fetchDialogAvatar,
     fetchDialogAvatars,
     dialogEntityCache,
+    // 导出清理方法供外部调用
+    clearCache: () => {
+      userAvatarCache.clear()
+      chatAvatarCache.clear()
+      dialogEntityCache.clear()
+      logger.log('Avatar cache manually cleared')
+    },
+    getCacheStats: () => ({
+      userAvatars: userAvatarCache.size,
+      chatAvatars: chatAvatarCache.size,
+      entities: dialogEntityCache.size,
+      maxSize: MAX_AVATAR_CACHE_SIZE,
+      ttl: `${AVATAR_CACHE_TTL / 1000}s`,
+    }),
   }
 }
 
@@ -279,7 +307,13 @@ export function createAvatarResolver(ctx: CoreContext): MessageResolver {
       // Deduplicate by sender id to avoid repeated downloads within the same batch
       const uniqueUserIds = Array.from(new Set(opts.messages.map(m => String(m.fromId)).filter(Boolean)))
 
+      // 使用并发控制，避免同时下载过多头像
+      // fetchUserAvatar 内部已经通过 downloadQueue 控制了并发
       await Promise.all(uniqueUserIds.map(id => helper.fetchUserAvatar(id)))
+
+      // 记录缓存状态（调试用）
+      const stats = helper.getCacheStats()
+      logger.debug('Avatar cache stats', stats)
 
       // No message mutations to persist
       return Ok([] as never[])
