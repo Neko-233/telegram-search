@@ -156,9 +156,6 @@ export function createDialogService(ctx: CoreContext) {
 
     emitter.emit('dialog:data', { dialogs })
 
-    // Kick off avatar download in background
-    void avatarHelper.fetchDialogAvatars(dialogList, 12).catch(error => logger.withError(error).warn('Failed to fetch dialog avatars'))
-
     return Ok(dialogs)
   }
 
