@@ -10,6 +10,7 @@ import { Buffer } from 'buffer'
 import { useLogger } from '@guiiai/logg'
 import { Ok } from '@unbird/result'
 import { Api } from 'telegram'
+import { lru } from 'tiny-lru'
 
 /**
  * Shared avatar cache entry.
@@ -24,10 +25,6 @@ interface AvatarCacheEntry {
   softExpiresAt?: number
   // Hard expiration; after this time data must be considered invalid
   hardExpiresAt?: number
-  // Last access timestamp for LRU-style eviction
-  lastAccessedAt?: number
-  // Approximate size of the entry in bytes for weighted eviction
-  sizeBytes?: number
 }
 
 /**
@@ -43,15 +40,20 @@ function createAvatarHelper(ctx: CoreContext) {
   const logger = useLogger('core:resolver:avatar')
   const { getClient, emitter } = ctx
   /**
-   * Read a numeric configuration value from environment in a universal-safe way.
-   * Uses globalThis.process?.env when available and falls back to the provided default
-   * in browser runtimes where Node's `process` is not defined.
-   * Accepts zero as a valid value; rejects non-finite or negative numbers.
+   * Read numeric config from environment without using global `process`.
+   * Uses `require("process")` defensively with a try/catch to work in browser builds.
+   * Accepts zero; rejects non-finite or negative numbers.
    */
   function getEnvNumber(name: string, fallback: number): number {
-    const g: any = globalThis as any
-    const raw = g?.process?.env?.[name]
-    const n = raw != null ? Number(raw) : NaN
+    let raw: string | undefined
+    try {
+      // eslint-disable-next-line ts/no-require-imports
+      const proc = require('process') as { env?: Record<string, string | undefined> }
+      raw = proc?.env?.[name]
+    } catch {
+      raw = undefined
+    }
+    const n = raw != null ? Number(raw) : Number.NaN
     return Number.isFinite(n) && n >= 0 ? n : fallback
   }
 
@@ -63,17 +65,15 @@ function createAvatarHelper(ctx: CoreContext) {
   const CHAT_SOFT_TTL_MS = getEnvNumber('AVATAR_CHAT_SOFT_TTL_MS', 48 * 60 * 60 * 1000) // 48h
   const CHAT_HARD_TTL_MS = getEnvNumber('AVATAR_CHAT_HARD_TTL_MS', 7 * 24 * 60 * 60 * 1000) // 7d
 
-  const FILEID_BYTE_BUDGET = getEnvNumber('AVATAR_FILEID_BYTE_BUDGET', 64 * 1024 * 1024) // 64MB
+  const FILEID_MAX_ENTRIES = getEnvNumber('AVATAR_FILEID_MAX_ENTRIES', 7000)
   const USER_ENTRY_BUDGET = getEnvNumber('AVATAR_USER_ENTRY_BUDGET', 4000)
   const CHAT_ENTRY_BUDGET = getEnvNumber('AVATAR_CHAT_ENTRY_BUDGET', 4000)
-  const USER_BYTE_BUDGET = getEnvNumber('AVATAR_USER_BYTE_BUDGET', 24 * 1024 * 1024) // 24MB
-  const CHAT_BYTE_BUDGET = getEnvNumber('AVATAR_CHAT_BYTE_BUDGET', 24 * 1024 * 1024) // 24MB
 
   const REFRESH_JITTER_MS = getEnvNumber('AVATAR_REFRESH_JITTER_MS', 500)
 
   // In-memory caches
-  const userAvatarCache = new Map<string, AvatarCacheEntry>()
-  const chatAvatarCache = new Map<number, AvatarCacheEntry>()
+  const userAvatarCache = lru<AvatarCacheEntry>(USER_ENTRY_BUDGET, USER_HARD_TTL_MS, false)
+  const chatAvatarCache = lru<AvatarCacheEntry>(CHAT_ENTRY_BUDGET, CHAT_HARD_TTL_MS, false)
   const dialogEntityCache = new Map<number, Api.User | Api.Chat | Api.Channel>()
 
   // In-flight dedup sets
@@ -82,11 +82,11 @@ function createAvatarHelper(ctx: CoreContext) {
 
   // Global cache keyed by avatar fileId to deduplicate across user/chat paths
   // Stores the latest bytes and mime type to allow reuse without re-downloading
-  const fileIdCache = new Map<string, { byte: Buffer, mimeType: string, updatedAt: number }>()
+  const fileIdCache = lru<{ byte: Buffer, mimeType: string, updatedAt: number }>(FILEID_MAX_ENTRIES, 0, false)
   // In-flight downloads keyed by fileId, so concurrent requests share a single download promise
   const inflightFileIds = new Map<string, Promise<{ byte: Buffer, mimeType: string }>>()
   // TTL/meta cache for fileId entries
-  const fileIdMetaCache = new Map<string, { softExpiresAt: number, hardExpiresAt: number, lastAccessedAt: number }>()
+  const fileIdMetaCache = lru<{ softExpiresAt: number, hardExpiresAt: number }>(FILEID_MAX_ENTRIES, 0, false)
   // Scheduled refresh timers keyed by fileId for cancellation on eviction
   const fileIdRefreshTimers = new Map<string, ReturnType<typeof setTimeout>>()
 
@@ -120,25 +120,14 @@ function createAvatarHelper(ctx: CoreContext) {
   }
 
   /**
-   * Compute entry metadata for TTL and access/size.
+   * Compute entry metadata for TTLs.
    */
-  function makeMetaForBytes(byte: Buffer, softTtlMs: number, hardTtlMs: number, baseNow = now()): Pick<AvatarCacheEntry, 'updatedAt' | 'softExpiresAt' | 'hardExpiresAt' | 'lastAccessedAt' | 'sizeBytes'> {
-    const size = byte?.byteLength ?? 0
+  function makeMetaForBytes(byte: Buffer, softTtlMs: number, hardTtlMs: number, baseNow = now()): Pick<AvatarCacheEntry, 'updatedAt' | 'softExpiresAt' | 'hardExpiresAt'> {
     return {
       updatedAt: baseNow,
       softExpiresAt: baseNow + softTtlMs,
       hardExpiresAt: baseNow + hardTtlMs,
-      lastAccessedAt: baseNow,
-      sizeBytes: size,
     }
-  }
-
-  /**
-   * Update last access time for an entry.
-   */
-  function touchAccess(entry?: AvatarCacheEntry): void {
-    if (entry)
-      entry.lastAccessedAt = now()
   }
 
   /**
@@ -153,12 +142,11 @@ function createAvatarHelper(ctx: CoreContext) {
   }
 
   /**
-   * Put or update a fileId cache entry's TTL meta and trigger pruning.
+   * Put or update a fileId cache entry's TTL meta.
    */
   function putFileIdMeta(fileId: string, byte: Buffer): void {
     const meta = makeMetaForBytes(byte, FILEID_SOFT_TTL_MS, FILEID_HARD_TTL_MS)
-    fileIdMetaCache.set(fileId, { softExpiresAt: meta.softExpiresAt!, hardExpiresAt: meta.hardExpiresAt!, lastAccessedAt: meta.lastAccessedAt! })
-    pruneCaches()
+    fileIdMetaCache.set(fileId, { softExpiresAt: meta.softExpiresAt!, hardExpiresAt: meta.hardExpiresAt! })
   }
 
   /**
@@ -173,7 +161,7 @@ function createAvatarHelper(ctx: CoreContext) {
       // Remove the timer reference immediately when firing to avoid stale entries
       fileIdRefreshTimers.delete(fileId)
       // Skip refresh if the entry was evicted before the timer fired
-      if (!fileIdCache.has(fileId) && !fileIdMetaCache.has(fileId))
+      if (!fileIdCache.get(fileId) && !fileIdMetaCache.get(fileId))
         return
       if (inflightFileIds.has(fileId))
         return
@@ -199,56 +187,7 @@ function createAvatarHelper(ctx: CoreContext) {
     fileIdRefreshTimers.set(fileId, timer)
   }
 
-  /**
-   * Prune caches to respect byte and entry budgets using LRU eviction.
-   */
-  function pruneCaches(): void {
-    // FileId byte budget with LRU based on meta.lastAccessedAt or updatedAt fallback
-    let totalFileIdBytes = 0
-    const fileIdEntries = Array.from(fileIdCache.entries()).map(([k, v]) => {
-      const meta = fileIdMetaCache.get(k)
-      const last = meta?.lastAccessedAt ?? v.updatedAt ?? 0
-      const size = v.byte?.byteLength ?? 0
-      totalFileIdBytes += size
-      return [k, { lastAccessedAt: last, sizeBytes: size }] as const
-    })
-    if (totalFileIdBytes > FILEID_BYTE_BUDGET) {
-      fileIdEntries.sort((a, b) => (a[1].lastAccessedAt - b[1].lastAccessedAt) || (a[1].sizeBytes - b[1].sizeBytes))
-      for (const [key, val] of fileIdEntries) {
-        if (totalFileIdBytes <= FILEID_BYTE_BUDGET) break
-        fileIdCache.delete(key)
-        fileIdMetaCache.delete(key)
-        clearFileIdRefreshTimer(key)
-        totalFileIdBytes -= val.sizeBytes
-      }
-    }
-
-    // User cache budgets
-    let userBytes = 0
-    for (const v of userAvatarCache.values()) userBytes += v.sizeBytes ?? (v.byte?.byteLength ?? 0)
-    if (userAvatarCache.size > USER_ENTRY_BUDGET || userBytes > USER_BYTE_BUDGET) {
-      const entries = Array.from(userAvatarCache.entries())
-      entries.sort((a, b) => ((a[1].lastAccessedAt ?? 0) - (b[1].lastAccessedAt ?? 0)) || ((a[1].sizeBytes ?? 0) - (b[1].sizeBytes ?? 0)))
-      for (const [key, val] of entries) {
-        if (userAvatarCache.size <= USER_ENTRY_BUDGET && userBytes <= USER_BYTE_BUDGET) break
-        userAvatarCache.delete(key)
-        userBytes -= val.sizeBytes ?? (val.byte?.byteLength ?? 0)
-      }
-    }
-
-    // Chat cache budgets
-    let chatBytes = 0
-    for (const v of chatAvatarCache.values()) chatBytes += v.sizeBytes ?? (v.byte?.byteLength ?? 0)
-    if (chatAvatarCache.size > CHAT_ENTRY_BUDGET || chatBytes > CHAT_BYTE_BUDGET) {
-      const entries = Array.from(chatAvatarCache.entries())
-      entries.sort((a, b) => ((a[1].lastAccessedAt ?? 0) - (b[1].lastAccessedAt ?? 0)) || ((a[1].sizeBytes ?? 0) - (b[1].sizeBytes ?? 0)))
-      for (const [key, val] of entries) {
-        if (chatAvatarCache.size <= CHAT_ENTRY_BUDGET && chatBytes <= CHAT_BYTE_BUDGET) break
-        chatAvatarCache.delete(key)
-        chatBytes -= val.sizeBytes ?? (val.byte?.byteLength ?? 0)
-      }
-    }
-  }
+  // Removed manual prune; tiny-lru handles capacity & eviction automatically.
 
   /**
    * Ensure avatar bytes are available for a given fileId using a global cache
@@ -272,15 +211,13 @@ function createAvatarHelper(ctx: CoreContext) {
       const meta = fileIdMetaCache.get(fileId)
       const nowMs = now()
       if (meta && nowMs > meta.hardExpiresAt) {
-        fileIdCache.delete(fileId)
-        fileIdMetaCache.delete(fileId)
+        lruDeleteKey(fileIdCache, fileId)
+        lruDeleteKey(fileIdMetaCache, fileId)
         clearFileIdRefreshTimer(fileId)
       }
       else {
         if (meta && nowMs > meta.softExpiresAt)
           scheduleFileIdRefresh(fileId, download)
-        if (meta)
-          meta.lastAccessedAt = nowMs
         return { byte: cached.byte, mimeType: cached.mimeType }
       }
     }
@@ -328,6 +265,40 @@ function createAvatarHelper(ctx: CoreContext) {
   }
 
   /**
+   * Safely extract a numeric id from a Telegram entity.
+   * Supports gramJS BigInteger (`toJSNumber`), native `bigint`, and `number`.
+   */
+  function getEntityIdNumber(entity: Api.User | Api.Chat | Api.Channel | undefined): number | undefined {
+    if (!entity) return undefined
+    const idVal = (entity as unknown as { id?: unknown }).id
+    if (idVal == null) return undefined
+    if (typeof idVal === 'number') return idVal
+    if (typeof idVal === 'bigint') {
+      const n = Number(idVal)
+      return Number.isFinite(n) ? n : undefined
+    }
+    const maybe = idVal as { toJSNumber?: () => number }
+    if (typeof maybe.toJSNumber === 'function') {
+      try {
+        const n = maybe.toJSNumber()
+        return Number.isFinite(n) ? n : undefined
+      }
+      catch {}
+    }
+    return undefined
+  }
+
+  /**
+   * Convert an entity's `photo` to a media input acceptable by `downloadMedia`.
+   * Falls back to `undefined` when the shape is not compatible.
+   */
+  function resolveEntityPhotoMedia(entity: Api.User | Api.Chat | Api.Channel): Api.TypeMessageMedia | undefined {
+    const photo = (entity as unknown as { photo?: unknown }).photo
+    if (!photo) return undefined
+    return photo as unknown as Api.TypeMessageMedia
+  }
+
+  /**
    * Download small profile photo for the given entity.
    * Falls back to `downloadMedia` when `downloadProfilePhoto` fails.
    */
@@ -338,10 +309,10 @@ function createAvatarHelper(ctx: CoreContext) {
     }
     catch (err) {
       logger.withError(err as Error).debug('downloadProfilePhoto failed, trying fallback')
-      const photo = (entity as any).photo
-      if (photo) {
+      const photoMedia = resolveEntityPhotoMedia(entity)
+      if (photoMedia) {
         try {
-          buffer = await getClient().downloadMedia(photo, { thumb: -1 }) as Buffer
+          buffer = await getClient().downloadMedia(photoMedia, { thumb: -1 }) as Buffer
         }
         catch (err2) {
           logger.withError(err2 as Error).debug('downloadMedia fallback failed')
@@ -400,7 +371,6 @@ function createAvatarHelper(ctx: CoreContext) {
           // fall through to refresh
         }
         else if (cached.byte && cached.mimeType) {
-          touchAccess(cached)
           emitter.emit('entity:avatar:data', { userId: key, byte: cached.byte, mimeType: cached.mimeType, fileId })
           // Ensure global fileId cache has bytes for cross-path reuse
           fileIdCache.set(fileId, { byte: cached.byte, mimeType: cached.mimeType, updatedAt: cached.updatedAt ?? nowMs })
@@ -411,12 +381,12 @@ function createAvatarHelper(ctx: CoreContext) {
       }
       // Cross-cache short-circuit: reuse dialog-side cached bytes if available
       try {
-        const idNum = (entity as any)?.id?.toJSNumber?.()
+        const idNum = getEntityIdNumber(entity)
         if (idNum && fileId) {
-          const chatCached = chatAvatarCache.get(idNum)
+          const chatCached = chatAvatarCache.get(String(idNum))
           if (chatCached && chatCached.fileId === fileId && chatCached.byte && chatCached.mimeType) {
             const meta = makeMetaForBytes(chatCached.byte, USER_SOFT_TTL_MS, USER_HARD_TTL_MS)
-            userAvatarCache.set(key, { fileId, mimeType: chatCached.mimeType, byte: chatCached.byte, updatedAt: meta.updatedAt, softExpiresAt: meta.softExpiresAt, hardExpiresAt: meta.hardExpiresAt, lastAccessedAt: meta.lastAccessedAt, sizeBytes: meta.sizeBytes })
+            userAvatarCache.set(key, { fileId, mimeType: chatCached.mimeType, byte: chatCached.byte, updatedAt: meta.updatedAt, softExpiresAt: meta.softExpiresAt, hardExpiresAt: meta.hardExpiresAt })
             fileIdCache.set(fileId, { byte: chatCached.byte, mimeType: chatCached.mimeType, updatedAt: chatCached.updatedAt ?? now() })
             emitter.emit('entity:avatar:data', { userId: key, byte: chatCached.byte, mimeType: chatCached.mimeType, fileId })
             return
@@ -433,8 +403,7 @@ function createAvatarHelper(ctx: CoreContext) {
 
       {
         const meta = makeMetaForBytes(result.byte, USER_SOFT_TTL_MS, USER_HARD_TTL_MS)
-        userAvatarCache.set(key, { fileId, mimeType: result.mimeType, byte: result.byte, updatedAt: meta.updatedAt, softExpiresAt: meta.softExpiresAt, hardExpiresAt: meta.hardExpiresAt, lastAccessedAt: meta.lastAccessedAt, sizeBytes: meta.sizeBytes })
-        pruneCaches()
+        userAvatarCache.set(key, { fileId, mimeType: result.mimeType, byte: result.byte, updatedAt: meta.updatedAt, softExpiresAt: meta.softExpiresAt, hardExpiresAt: meta.hardExpiresAt })
       }
       emitter.emit('entity:avatar:data', { userId: key, byte: result.byte, mimeType: result.mimeType, fileId })
     }
@@ -462,8 +431,9 @@ function createAvatarHelper(ctx: CoreContext) {
         entity = await getClient().getEntity(String(chatId)) as Api.User | Api.Chat | Api.Channel
         // Cache entity for future single fetches
         try {
-          if (entity && (entity as any).id?.toJSNumber)
-            dialogEntityCache.set((entity as any).id.toJSNumber(), entity)
+          const idN = getEntityIdNumber(entity)
+          if (idN)
+            dialogEntityCache.set(idN, entity)
         }
         catch {}
       }
@@ -471,20 +441,20 @@ function createAvatarHelper(ctx: CoreContext) {
         return
 
       const fileId = resolveAvatarFileId(entity)
-      const cached = chatAvatarCache.get(idNum)
+      const cached = chatAvatarCache.get(String(idNum))
       if (cached && cached.fileId && fileId && cached.fileId === fileId) {
         logger.withFields({ chatId: idNum }).verbose('Single avatar cache hit; skip emit')
         // Populate global fileId cache for cross-path reuse to avoid re-downloads
         if (cached.byte && cached.mimeType) {
           const nowMs = now()
-          touchAccess(cached)
           fileIdCache.set(fileId, { byte: cached.byte, mimeType: cached.mimeType, updatedAt: cached.updatedAt ?? nowMs })
           // If the entity is a User, also update user-side cache for cross-path reuse
           try {
-            if (entity instanceof Api.User && (entity as any).id?.toJSNumber) {
-              const uid = String((entity as any).id.toJSNumber())
+            const uidNum = getEntityIdNumber(entity)
+            if (entity instanceof Api.User && uidNum != null) {
+              const uid = String(uidNum)
               const metaUser = makeMetaForBytes(cached.byte, USER_SOFT_TTL_MS, USER_HARD_TTL_MS)
-              userAvatarCache.set(uid, { fileId, mimeType: cached.mimeType, byte: cached.byte, updatedAt: metaUser.updatedAt, softExpiresAt: metaUser.softExpiresAt, hardExpiresAt: metaUser.hardExpiresAt, lastAccessedAt: metaUser.lastAccessedAt, sizeBytes: metaUser.sizeBytes })
+              userAvatarCache.set(uid, { fileId, mimeType: cached.mimeType, byte: cached.byte, updatedAt: metaUser.updatedAt, softExpiresAt: metaUser.softExpiresAt, hardExpiresAt: metaUser.hardExpiresAt })
             }
           }
           catch {}
@@ -503,15 +473,15 @@ function createAvatarHelper(ctx: CoreContext) {
 
       {
         const metaChat = makeMetaForBytes(result.byte, CHAT_SOFT_TTL_MS, CHAT_HARD_TTL_MS)
-        chatAvatarCache.set(idNum, { fileId, mimeType: result.mimeType, byte: result.byte, updatedAt: metaChat.updatedAt, softExpiresAt: metaChat.softExpiresAt, hardExpiresAt: metaChat.hardExpiresAt, lastAccessedAt: metaChat.lastAccessedAt, sizeBytes: metaChat.sizeBytes })
-        pruneCaches()
+        chatAvatarCache.set(String(idNum), { fileId, mimeType: result.mimeType, byte: result.byte, updatedAt: metaChat.updatedAt, softExpiresAt: metaChat.softExpiresAt, hardExpiresAt: metaChat.hardExpiresAt })
       }
       // If the entity is a User, also update user-side cache for cross-path reuse
       try {
-        if (entity instanceof Api.User && (entity as any).id?.toJSNumber) {
-          const uid = String((entity as any).id.toJSNumber())
+        const uidNum = getEntityIdNumber(entity)
+        if (entity instanceof Api.User && uidNum != null) {
+          const uid = String(uidNum)
           const metaUser = makeMetaForBytes(result.byte, USER_SOFT_TTL_MS, USER_HARD_TTL_MS)
-          userAvatarCache.set(uid, { fileId, mimeType: result.mimeType, byte: result.byte, updatedAt: metaUser.updatedAt, softExpiresAt: metaUser.softExpiresAt, hardExpiresAt: metaUser.hardExpiresAt, lastAccessedAt: metaUser.lastAccessedAt, sizeBytes: metaUser.sizeBytes })
+          userAvatarCache.set(uid, { fileId, mimeType: result.mimeType, byte: result.byte, updatedAt: metaUser.updatedAt, softExpiresAt: metaUser.softExpiresAt, hardExpiresAt: metaUser.hardExpiresAt })
         }
       }
       catch {}
@@ -547,28 +517,28 @@ function createAvatarHelper(ctx: CoreContext) {
           continue
 
         try {
-          const id = dialog.entity.id?.toJSNumber?.()
+          const id = getEntityIdNumber(dialog.entity as Api.User | Api.Chat | Api.Channel)
           if (!id)
             continue
 
           const fileId = resolveAvatarFileId(dialog.entity as Api.User | Api.Chat | Api.Channel)
 
-          const cached = chatAvatarCache.get(id)
+          const cached = chatAvatarCache.get(String(id))
           // If cache exists and fileId unchanged, skip network and emit to reduce noise.
           if (cached && cached.fileId && fileId && cached.fileId === fileId) {
             logger.withFields({ chatId: id }).verbose('Avatar cache hit; skip emit')
             // Populate global fileId cache for cross-path reuse to avoid re-downloads
             if (cached.byte && cached.mimeType) {
               const nowMs = now()
-              touchAccess(cached)
               fileIdCache.set(fileId, { byte: cached.byte, mimeType: cached.mimeType, updatedAt: cached.updatedAt ?? nowMs })
               // If entity is a User, also update user-side cache for cross-path reuse
               try {
                 const ent = dialog.entity as Api.User | Api.Chat | Api.Channel
-                if (ent instanceof Api.User && (ent as any).id?.toJSNumber) {
-                  const uid = String((ent as any).id.toJSNumber())
+                const uidNum = getEntityIdNumber(ent)
+                if (ent instanceof Api.User && uidNum != null) {
+                  const uid = String(uidNum)
                   const metaUser = makeMetaForBytes(cached.byte, USER_SOFT_TTL_MS, USER_HARD_TTL_MS)
-                  userAvatarCache.set(uid, { fileId, mimeType: cached.mimeType, byte: cached.byte, updatedAt: metaUser.updatedAt, softExpiresAt: metaUser.softExpiresAt, hardExpiresAt: metaUser.hardExpiresAt, lastAccessedAt: metaUser.lastAccessedAt, sizeBytes: metaUser.sizeBytes })
+                  userAvatarCache.set(uid, { fileId, mimeType: cached.mimeType, byte: cached.byte, updatedAt: metaUser.updatedAt, softExpiresAt: metaUser.softExpiresAt, hardExpiresAt: metaUser.hardExpiresAt })
                 }
               }
               catch {}
@@ -587,16 +557,16 @@ function createAvatarHelper(ctx: CoreContext) {
 
           {
             const metaChat = makeMetaForBytes(result.byte, CHAT_SOFT_TTL_MS, CHAT_HARD_TTL_MS)
-            chatAvatarCache.set(id, { fileId, mimeType: result.mimeType, byte: result.byte, updatedAt: metaChat.updatedAt, softExpiresAt: metaChat.softExpiresAt, hardExpiresAt: metaChat.hardExpiresAt, lastAccessedAt: metaChat.lastAccessedAt, sizeBytes: metaChat.sizeBytes })
-            pruneCaches()
+            chatAvatarCache.set(String(id), { fileId, mimeType: result.mimeType, byte: result.byte, updatedAt: metaChat.updatedAt, softExpiresAt: metaChat.softExpiresAt, hardExpiresAt: metaChat.hardExpiresAt })
           }
           // If entity is a User, also update user-side cache for cross-path reuse
           try {
             const ent = dialog.entity as Api.User | Api.Chat | Api.Channel
-            if (ent instanceof Api.User && (ent as any).id?.toJSNumber) {
-              const uid = String((ent as any).id.toJSNumber())
+            const uidNum = getEntityIdNumber(ent)
+            if (ent instanceof Api.User && uidNum != null) {
+              const uid = String(uidNum)
               const metaUser = makeMetaForBytes(result.byte, USER_SOFT_TTL_MS, USER_HARD_TTL_MS)
-              userAvatarCache.set(uid, { fileId, mimeType: result.mimeType, byte: result.byte, updatedAt: metaUser.updatedAt, softExpiresAt: metaUser.softExpiresAt, hardExpiresAt: metaUser.hardExpiresAt, lastAccessedAt: metaUser.lastAccessedAt, sizeBytes: metaUser.sizeBytes })
+              userAvatarCache.set(uid, { fileId, mimeType: result.mimeType, byte: result.byte, updatedAt: metaUser.updatedAt, softExpiresAt: metaUser.softExpiresAt, hardExpiresAt: metaUser.hardExpiresAt })
             }
           }
           catch {}
@@ -658,3 +628,16 @@ export function createAvatarResolver(ctx: CoreContext): MessageResolver {
     },
   }
 }
+  /**
+   * Remove a key from a tiny-lru cache with compatibility across versions.
+   * Uses `.delete` when available, otherwise `.remove`.
+   */
+  /**
+   * Delete a key from a tiny-lru instance in a version-compatible way.
+   * Supports both v10 (`remove`) and v11+ (`delete`) methods.
+   */
+  function lruDeleteKey(cache: unknown, key: string): void {
+    const c = cache as { delete?: (k: string) => void; remove?: (k: string) => void }
+    if (typeof c.delete === 'function') c.delete(key)
+    else if (typeof c.remove === 'function') c.remove(key)
+  }
