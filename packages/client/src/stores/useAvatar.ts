@@ -29,6 +29,8 @@ export const useAvatarStore = defineStore('avatar', () => {
   const inflightChatFetchIds = ref<Set<string>>(new Set())
   // Track in-flight user avatar fetches to avoid duplicate sends
   const inflightUserFetchIds = ref<Set<string>>(new Set())
+  // Track in-flight user avatar prefills to avoid duplicate work
+  const inflightUserPrefillIds = ref<Set<string>>(new Set())
 
   /**
    * Get cached avatar blob URL for a user.
@@ -139,14 +141,17 @@ export const useAvatarStore = defineStore('avatar', () => {
    * Otherwise, mark in-flight and send 'entity:avatar:fetch'.
    */
   function ensureUserAvatar(userId: string | number | undefined) {
-    if (!userId)
+    if (!userId) {
       return
+    }
     const key = String(userId)
     const existing = userAvatars.value.get(key)
-    if (existing && (!existing.expiresAt || Date.now() < existing.expiresAt))
+    if (existing && (!existing.expiresAt || Date.now() < existing.expiresAt)) {
       return
-    if (inflightUserFetchIds.value.has(key))
+    }
+    if (inflightUserFetchIds.value.has(key)) {
       return
+    }
     try {
       inflightUserFetchIds.value.add(key)
       websocketStore.sendEvent('entity:avatar:fetch', { userId: key })
@@ -250,6 +255,7 @@ export const useAvatarStore = defineStore('avatar', () => {
     chatAvatars,
     inflightChatFetchIds,
     inflightUserFetchIds,
+    inflightUserPrefillIds,
     size,
     getUserAvatarUrl,
     getChatAvatarUrl,

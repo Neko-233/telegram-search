@@ -19,17 +19,32 @@ export function useEnsureUserAvatar(userId: MaybeRef<string | number | undefined
     const id = unref(userId)
     if (!id)
       return
+    const key = String(id)
+    // 1. Check in-memory cache first
     const url = avatarStore.getUserAvatarUrl(id)
     if (url)
       return
+    // 2. Check if a prefill is already in-flight for this userId
+    if (avatarStore.inflightUserPrefillIds.has(key))
+      return
+    // 3. Mark this userId as being prefilled to prevent duplicate work
+    avatarStore.inflightUserPrefillIds.add(key)
+
     try {
-      await prefillUserAvatarIntoStore(String(id))
+      // Attempt to prefill from IndexedDB.
+      await prefillUserAvatarIntoStore(key)
     }
     catch {
       /* ignore prefill error and continue */
     }
-    const stillMissing = !avatarStore.getUserAvatarUrl(id)
-    if (stillMissing)
+    finally {
+      // 4. Always remove the prefill lock when done, whether it succeeded or failed
+      avatarStore.inflightUserPrefillIds.delete(key)
+    }
+
+    // If prefill failed, a final check on the store before network fetch as a safeguard.
+    const finalUrl = avatarStore.getUserAvatarUrl(id)
+    if (!finalUrl)
       avatarStore.ensureUserAvatar(String(id))
   }
 
@@ -57,13 +72,18 @@ export function useEnsureChatAvatar(chatId: MaybeRef<string | number | undefined
     if (valid)
       return
     try {
+      // Attempt to prefill from IndexedDB.
       await prefillChatAvatarIntoStore(String(cid))
+      // After prefilling, if the avatar is now valid (correct fileId), we can stop.
+      if (avatarStore.hasValidChatAvatar(String(cid), fid))
+        return
     }
     catch {
       /* ignore prefill error and continue */
     }
-    const stillMissing = !avatarStore.hasValidChatAvatar(String(cid), fid)
-    if (stillMissing)
+
+    // If prefill failed or the loaded avatar was outdated, trigger network fetch.
+    if (!avatarStore.hasValidChatAvatar(String(cid), fid))
       avatarStore.ensureChatAvatar(String(cid), fid)
   }
 
@@ -79,17 +99,33 @@ export async function ensureUserAvatarImmediate(userId: string | number | undefi
   const avatarStore = useAvatarStore()
   if (!userId)
     return
+  const key = String(userId)
+  // 1. Check in-memory cache first
   const url = avatarStore.getUserAvatarUrl(userId)
   if (url)
     return
+  // 2. Check if a prefill is already in-flight for this userId
+  if (avatarStore.inflightUserPrefillIds.has(key))
+    return
+  // 3. Mark this userId as being prefilled to prevent duplicate work
+  avatarStore.inflightUserPrefillIds.add(key)
+
   try {
-    await prefillUserAvatarIntoStore(String(userId))
+    // Attempt to prefill from IndexedDB. If successful, the operation is complete.
+    const prefillSuccess = await prefillUserAvatarIntoStore(key)
+    if (prefillSuccess)
+      return
   }
   catch {
     /* ignore */
   }
-  const stillMissing = !avatarStore.getUserAvatarUrl(userId)
-  if (stillMissing)
+  finally {
+    // 4. Always remove the prefill lock when done, whether it succeeded or failed
+    avatarStore.inflightUserPrefillIds.delete(key)
+  }
+
+  // If prefill failed, a final check on the store before network fetch as a safeguard.
+  if (!avatarStore.getUserAvatarUrl(userId))
     avatarStore.ensureUserAvatar(String(userId))
 }
 
@@ -106,12 +142,17 @@ export async function ensureChatAvatarImmediate(chatId: string | number | undefi
   if (valid)
     return
   try {
+    // Attempt to prefill from IndexedDB.
     await prefillChatAvatarIntoStore(String(chatId))
+    // After prefilling, if the avatar is now valid (correct fileId), we can stop.
+    if (avatarStore.hasValidChatAvatar(String(chatId), fid))
+      return
   }
   catch {
     /* ignore */
   }
-  const stillMissing = !avatarStore.hasValidChatAvatar(String(chatId), fid)
-  if (stillMissing)
+
+  // If prefill failed or the loaded avatar was outdated, trigger network fetch.
+  if (!avatarStore.hasValidChatAvatar(String(chatId), fid))
     avatarStore.ensureChatAvatar(String(chatId), fid)
 }
