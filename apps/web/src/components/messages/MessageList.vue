@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CoreMessage } from '@tg-search/core/types'
 
-import { formatMessageTimestamp } from '@tg-search/client'
+import { formatMessageTimestamp, useAvatarStore } from '@tg-search/client'
 import { useClipboard } from '@vueuse/core'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -83,6 +83,19 @@ function handleLongPress(event: TouchEvent, message: CoreMessage) {
   contextMenuY.value = touch.clientY
   contextMenuOpen.value = true
 }
+
+const avatarStore = useAvatarStore()
+
+/**
+ * Get the current user's avatar URL for a message.
+ * Cache-aware: reads from the centralized avatar store to leverage TTL and in-memory cache.
+ * Rendering components depend on this URL; visibility-driven directive triggers fetching when needed.
+ */
+function getUserAvatarUrl(userId: string | number | undefined): string | undefined {
+  if (!userId)
+    return undefined
+  return avatarStore.getUserAvatarUrl(userId)
+}
 </script>
 
 <template>
@@ -90,7 +103,7 @@ function handleLongPress(event: TouchEvent, message: CoreMessage) {
     <li
       v-for="item in props.messages"
       :key="item.uuid"
-      class="group animate-slide-in relative flex cursor-pointer items-center gap-3 border-b p-3 transition-all duration-200 ease-in-out last:border-b-0 dark:border-gray-700 active:bg-neutral-200/50 hover:bg-neutral-100/50 dark:active:bg-gray-700/50 dark:hover:bg-gray-800/50"
+      class="group animate-slide-in relative flex cursor-pointer items-start gap-3 border-b p-3 transition-all duration-200 ease-in-out last:border-b-0 dark:border-gray-700 active:bg-neutral-200/50 hover:bg-neutral-100/50 dark:active:bg-gray-700/50 dark:hover:bg-gray-800/50"
       tabindex="0"
       @mouseenter="hoveredMessage = item"
       @mouseleave="hoveredMessage = null"
@@ -99,10 +112,14 @@ function handleLongPress(event: TouchEvent, message: CoreMessage) {
       @contextmenu="handleContextMenu($event, item)"
       @touchstart.passive="handleLongPress($event, item)"
     >
-      <Avatar
-        :name="item.fromName"
-        size="md"
-      />
+      <div class="flex-shrink-0 pt-0.5">
+        <Avatar
+          v-ensure-user-avatar="{ userId: item.fromId }"
+          :src="getUserAvatarUrl(item.fromId)"
+          :name="item.fromName"
+          size="md"
+        />
+      </div>
       <div class="min-w-0 flex-1">
         <div class="flex items-baseline gap-2">
           <span class="truncate text-sm text-gray-900 font-semibold dark:text-gray-100">

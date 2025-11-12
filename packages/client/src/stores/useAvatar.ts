@@ -27,6 +27,8 @@ export const useAvatarStore = defineStore('avatar', () => {
   const chatAvatars = ref<Map<string, AvatarEntry>>(new Map())
   // Track in-flight prioritized chat avatar fetches to avoid duplicate sends
   const inflightChatFetchIds = ref<Set<string>>(new Set())
+  // Track in-flight user avatar fetches to avoid duplicate sends
+  const inflightUserFetchIds = ref<Set<string>>(new Set())
 
   /**
    * Get cached avatar blob URL for a user.
@@ -130,6 +132,12 @@ export const useAvatarStore = defineStore('avatar', () => {
    * Ensure a user's avatar is available in cache.
    * If missing, triggers a lazy fetch via core event 'entity:avatar:fetch'.
    */
+  /**
+   * Ensure a user's avatar is available in cache.
+   * Cache-first: if present and not expired, skip.
+   * Dedupe: if a fetch for the same user is already in-flight, skip.
+   * Otherwise, mark in-flight and send 'entity:avatar:fetch'.
+   */
   function ensureUserAvatar(userId: string | number | undefined) {
     if (!userId)
       return
@@ -137,12 +145,35 @@ export const useAvatarStore = defineStore('avatar', () => {
     const existing = userAvatars.value.get(key)
     if (existing && (!existing.expiresAt || Date.now() < existing.expiresAt))
       return
+    if (inflightUserFetchIds.value.has(key))
+      return
     try {
+      inflightUserFetchIds.value.add(key)
       websocketStore.sendEvent('entity:avatar:fetch', { userId: key })
     }
     catch (error) {
       console.warn('[Avatar] ensureUserAvatar sendEvent failed:', error)
     }
+  }
+
+  /**
+   * Check whether a user avatar fetch is currently in-flight.
+   * Helps components avoid re-sending while waiting for data.
+   */
+  function isUserFetchInflight(userId: string | number | undefined): boolean {
+    if (!userId)
+      return false
+    return inflightUserFetchIds.value.has(String(userId))
+  }
+
+  /**
+   * Mark a user avatar fetch as completed.
+   * Should be called after 'entity:avatar:data' is handled or on error.
+   */
+  function markUserFetchCompleted(userId: string | number | undefined): void {
+    if (!userId)
+      return
+    inflightUserFetchIds.value.delete(String(userId))
   }
 
   /**
@@ -218,6 +249,7 @@ export const useAvatarStore = defineStore('avatar', () => {
     userAvatars,
     chatAvatars,
     inflightChatFetchIds,
+    inflightUserFetchIds,
     size,
     getUserAvatarUrl,
     getChatAvatarUrl,
@@ -226,7 +258,9 @@ export const useAvatarStore = defineStore('avatar', () => {
     hasValidChatAvatar,
     ensureUserAvatar,
     ensureChatAvatar,
+    isUserFetchInflight,
     isChatFetchInflight,
+    markUserFetchCompleted,
     markChatFetchCompleted,
     cleanupExpired,
   }

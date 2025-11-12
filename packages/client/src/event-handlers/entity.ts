@@ -34,12 +34,16 @@ export function registerEntityEventHandlers(
     if (!buffer) {
       // Use warn to comply with lint rule: allow only warn/error
       console.warn('[Avatar] Missing byte for user avatar')
+      // Clear in-flight flag to avoid repeated sends
+      avatarStore.markUserFetchCompleted(data.userId)
       return
     }
 
     // Decode-check: only set src when image is decodable; otherwise let component fallback
     const decodable = await canDecodeAvatar(buffer, data.mimeType)
     if (!decodable) {
+      // Clear in-flight flag even if image is not decodable
+      avatarStore.markUserFetchCompleted(data.userId)
       return
     }
     const blob = await optimizeAvatarBlob(buffer, data.mimeType)
@@ -55,6 +59,9 @@ export function registerEntityEventHandlers(
     }
 
     avatarStore.setUserAvatar(data.userId, { blobUrl: url, fileId: data.fileId, mimeType: data.mimeType })
+
+    // Clear in-flight flag after successful update
+    avatarStore.markUserFetchCompleted(data.userId)
 
     // console.warn('[Avatar] Updated user avatar', { userId: data.userId, fileId: data.fileId })
   })
