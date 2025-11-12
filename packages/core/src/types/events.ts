@@ -122,8 +122,9 @@ export interface EntityEventToCore {
   'entity:me:fetch': () => void
   /**
    * Lazy fetch of a user's avatar by userId. Core should respond with 'entity:avatar:data'.
+   * Optional fileId allows core to check cache before fetching.
    */
-  'entity:avatar:fetch': (data: { userId: string }) => void
+  'entity:avatar:fetch': (data: { userId: string, fileId?: string }) => void
 }
 
 export interface EntityEventFromCore {

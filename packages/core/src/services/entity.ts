@@ -34,9 +34,10 @@ export function createEntityService(ctx: CoreContext) {
   /**
    * Fetch a user's avatar via centralized AvatarHelper.
    * Ensures consistent caching and deduplication across services.
+   * Optional expectedFileId allows cache validation before fetching.
    */
-  async function fetchUserAvatar(userId: string) {
-    await avatarHelper.fetchUserAvatar(userId)
+  async function fetchUserAvatar(userId: string, expectedFileId?: string) {
+    await avatarHelper.fetchUserAvatar(userId, expectedFileId)
   }
 
   return {

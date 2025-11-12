@@ -44,8 +44,11 @@ export function useEnsureUserAvatar(userId: MaybeRef<string | number | undefined
 
     // If prefill failed, a final check on the store before network fetch as a safeguard.
     const finalUrl = avatarStore.getUserAvatarUrl(id)
-    if (!finalUrl)
-      avatarStore.ensureUserAvatar(String(id))
+    if (!finalUrl) {
+      // Get fileId if available for core layer cache validation
+      const fileId = avatarStore.getUserAvatarFileId(id)
+      avatarStore.ensureUserAvatar(String(id), fileId)
+    }
   }
 
   onMounted(ensure)

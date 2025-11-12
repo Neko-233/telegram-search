@@ -54,6 +54,27 @@ export const useAvatarStore = defineStore('avatar', () => {
   }
 
   /**
+   * Get cached avatar fileId for a user.
+   * Returns undefined if missing or expired.
+   */
+  function getUserAvatarFileId(userId: string | number | undefined): string | undefined {
+    if (!userId)
+      return undefined
+    const key = String(userId)
+    const entry = userAvatars.value.get(key)
+    if (!entry)
+      return undefined
+    if (entry.expiresAt && Date.now() > entry.expiresAt) {
+      // Expired, cleanup and return undefined
+      if (entry.blobUrl)
+        URL.revokeObjectURL(entry.blobUrl)
+      userAvatars.value.delete(key)
+      return undefined
+    }
+    return entry.fileId
+  }
+
+  /**
    * Get cached avatar blob URL for a chat.
    * Returns undefined if missing or expired.
    */
@@ -139,8 +160,9 @@ export const useAvatarStore = defineStore('avatar', () => {
    * Cache-first: if present and not expired, skip.
    * Dedupe: if a fetch for the same user is already in-flight, skip.
    * Otherwise, mark in-flight and send 'entity:avatar:fetch'.
+   * Optional fileId allows core to validate cache before fetching.
    */
-  function ensureUserAvatar(userId: string | number | undefined) {
+  function ensureUserAvatar(userId: string | number | undefined, fileId?: string) {
     if (!userId) {
       return
     }
@@ -154,7 +176,7 @@ export const useAvatarStore = defineStore('avatar', () => {
     }
     try {
       inflightUserFetchIds.value.add(key)
-      websocketStore.sendEvent('entity:avatar:fetch', { userId: key })
+      websocketStore.sendEvent('entity:avatar:fetch', { userId: key, fileId })
     }
     catch (error) {
       console.warn('[Avatar] ensureUserAvatar sendEvent failed:', error)
@@ -258,6 +280,7 @@ export const useAvatarStore = defineStore('avatar', () => {
     inflightUserPrefillIds,
     size,
     getUserAvatarUrl,
+    getUserAvatarFileId,
     getChatAvatarUrl,
     setUserAvatar,
     setChatAvatar,

@@ -145,8 +145,9 @@ function createAvatarHelper(ctx: CoreContext) {
   /**
    * Fetch and emit a user's avatar bytes, with cache and in-flight dedup.
    * Emits `entity:avatar:data` on success.
+   * Optional expectedFileId allows early cache validation before entity fetch.
    */
-  async function fetchUserAvatar(userId: string): Promise<void> {
+  async function fetchUserAvatar(userId: string, expectedFileId?: string): Promise<void> {
     try {
       const key = String(Number(userId) || userId)
       // Negative cache early exit: skip repeated requests for users without avatars
@@ -157,6 +158,18 @@ function createAvatarHelper(ctx: CoreContext) {
       if (inflightUsers.has(key))
         return
       inflightUsers.add(key)
+
+      // Early cache validation: if expectedFileId matches cached fileId, skip entity fetch and download
+      if (expectedFileId) {
+        const cached = userAvatarCache.get(key)
+        if (cached && cached.fileId === expectedFileId) {
+          logger.withFields({ userId: key, fileId: expectedFileId }).verbose('User avatar cache hit with expected fileId')
+          if (cached.byte && cached.mimeType) {
+            emitter.emit('entity:avatar:data', { userId: key, byte: cached.byte, mimeType: cached.mimeType, fileId: expectedFileId })
+          }
+          return
+        }
+      }
 
       const entity = await getClient().getEntity(userId) as Api.User
       const fileId = resolveAvatarFileId(entity)

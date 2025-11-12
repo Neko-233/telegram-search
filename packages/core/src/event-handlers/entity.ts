@@ -13,9 +13,9 @@ export function registerEntityEventHandlers(ctx: CoreContext) {
       await entityService.getMeInfo()
     })
 
-    emitter.on('entity:avatar:fetch', async ({ userId }) => {
-      logger.withFields({ userId }).verbose('Fetching user avatar')
-      await entityService.fetchUserAvatar(userId)
+    emitter.on('entity:avatar:fetch', async ({ userId, fileId }) => {
+      logger.withFields({ userId, fileId }).verbose('Fetching user avatar')
+      await entityService.fetchUserAvatar(userId, fileId)
     })
   }
 }
