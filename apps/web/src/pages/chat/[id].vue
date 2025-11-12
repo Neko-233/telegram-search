@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CoreDialog, CoreMessage } from '@tg-search/core/types'
 
-import { prefillUserAvatarIntoStore, useAvatarStore, useBridgeStore, useChatStore, useMessageStore, useSettingsStore } from '@tg-search/client'
+import { useAvatarStore, useBridgeStore, useChatStore, useMessageStore, useSettingsStore } from '@tg-search/client'
 import { useWindowSize } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
