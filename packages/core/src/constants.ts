@@ -1,15 +1,15 @@
-// 消息处理批次大小
-// 对于包含大量媒体的消息，应该使用较小的批次以避免内存占用过高
+// Message processing batch size
+// For messages containing a large amount of media, a smaller batch should be used to avoid high memory usage
 export const MESSAGE_PROCESS_BATCH_SIZE = 50
 export const MESSAGE_RESOLVER_QUEUE_SIZE = 4
 
-// LRU 缓存配置
+// LRU cache configuration
 export const MAX_AVATAR_CACHE_SIZE = 150
 export const AVATAR_CACHE_TTL = 15 * 60 * 1000
 export const AVATAR_DOWNLOAD_CONCURRENCY = 1
 
-// 限制并发下载数量，避免同时下载过多文件导致内存爆炸
+// Limit concurrent download count to avoid memory explosion from downloading too many files simultaneously
 export const MEDIA_DOWNLOAD_CONCURRENCY = 32
 
-// Telegram 历史记录请求节流（ms），避免触发 FloodWait
+// Telegram history request throttling (ms) to avoid triggering FloodWait
 export const TELEGRAM_HISTORY_INTERVAL_MS = 1000
