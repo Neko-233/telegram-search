@@ -31,5 +31,4 @@ watch(() => [props.chatId, props.fileId], () => {
 <template>
   <!-- Invisible helper; no UI rendered -->
   <span style="display: none" aria-hidden="true" />
-  
 </template>

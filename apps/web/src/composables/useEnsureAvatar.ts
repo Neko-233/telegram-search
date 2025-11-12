@@ -1,7 +1,7 @@
-import type {ComputedRef, Ref} from 'vue';
+import type { ComputedRef, Ref } from 'vue'
 
 import { prefillChatAvatarIntoStore, prefillUserAvatarIntoStore, useAvatarStore } from '@tg-search/client'
-import {  onMounted,  unref, watch } from 'vue'
+import { onMounted, unref, watch } from 'vue'
 
 type MaybeRef<T> = T | Ref<T> | ComputedRef<T>
 
