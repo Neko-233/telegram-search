@@ -3,7 +3,7 @@ import type { ClientRegisterEventHandler } from '.'
 import { useBridgeStore } from '../composables/useBridge'
 import { useAvatarStore } from '../stores/useAvatar'
 import { persistUserAvatar } from '../utils/avatar-cache'
-import { optimizeAvatarBlob } from '../utils/image'
+import { canDecodeAvatar, optimizeAvatarBlob } from '../utils/image'
 
 /**
  * Register entity-related client event handlers.
@@ -37,6 +37,11 @@ export function registerEntityEventHandlers(
       return
     }
 
+    // Decode-check: only set src when image is decodable; otherwise let component fallback
+    const decodable = await canDecodeAvatar(buffer, data.mimeType)
+    if (!decodable) {
+      return
+    }
     const blob = await optimizeAvatarBlob(buffer, data.mimeType)
     const url = URL.createObjectURL(blob)
 

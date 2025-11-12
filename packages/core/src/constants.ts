@@ -6,7 +6,7 @@ export const MESSAGE_RESOLVER_QUEUE_SIZE = 4
 // LRU 缓存配置
 export const MAX_AVATAR_CACHE_SIZE = 150
 export const AVATAR_CACHE_TTL = 15 * 60 * 1000
-export const AVATAR_DOWNLOAD_CONCURRENCY = 1
+export const AVATAR_DOWNLOAD_CONCURRENCY = 4
 
 // 限制并发下载数量，避免同时下载过多文件导致内存爆炸
 export const MEDIA_DOWNLOAD_CONCURRENCY = 32

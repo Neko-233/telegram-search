@@ -3,7 +3,7 @@ import type { ClientRegisterEventHandlerFn } from '.'
 import { useAvatarStore } from '../stores/useAvatar'
 import { useChatStore } from '../stores/useChat'
 import { persistChatAvatar } from '../utils/avatar-cache'
-import { optimizeAvatarBlob } from '../utils/image'
+import { canDecodeAvatar, optimizeAvatarBlob } from '../utils/image'
 
 /**
  * Register dialog-related client event handlers.
@@ -55,7 +55,14 @@ export function registerDialogEventHandlers(
       return
     }
 
-    // Optimize and create blob URL
+    // Decode-check: only set src when image is decodable; otherwise let component fallback
+    const decodable = await canDecodeAvatar(buffer, data.mimeType)
+    if (!decodable) {
+      // Signal completion to clear in-flight flag for this chat
+      useAvatarStore().markChatFetchCompleted(data.chatId)
+      return
+    }
+    // Optimize (no-op) and create blob URL
     const blob = await optimizeAvatarBlob(buffer, data.mimeType)
     const url = URL.createObjectURL(blob)
 

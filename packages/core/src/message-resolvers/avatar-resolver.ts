@@ -41,10 +41,26 @@ function createAvatarHelper(ctx: CoreContext) {
   const userAvatarCache = lru<AvatarCacheEntry>(MAX_AVATAR_CACHE_SIZE, AVATAR_CACHE_TTL)
   const chatAvatarCache = lru<AvatarCacheEntry>(MAX_AVATAR_CACHE_SIZE, AVATAR_CACHE_TTL)
   const dialogEntityCache = lru<Api.User | Api.Chat | Api.Channel>(MAX_AVATAR_CACHE_SIZE, AVATAR_CACHE_TTL)
+  // Negative caches (sentinels): record entities known to have no avatar
+  const noUserAvatarCache = lru<boolean>(MAX_AVATAR_CACHE_SIZE, AVATAR_CACHE_TTL)
+  const noChatAvatarCache = lru<boolean>(MAX_AVATAR_CACHE_SIZE, AVATAR_CACHE_TTL)
+  // Global per-context fileId -> bytes cache to dedupe downloads across users/chats
+  const fileIdByteCache = lru<{ byte: Buffer, mimeType: string }>(MAX_AVATAR_CACHE_SIZE, AVATAR_CACHE_TTL)
 
   // In-flight dedup sets
   const inflightUsers = new Set<string>()
-  const inflightChats = new Set<number>()
+  const inflightChats = new Set<string>()
+
+  /**
+   * Normalize id to a string key for caches and dedup.
+   * Ensures consistent keys to avoid LRU misses due to type mismatch.
+   */
+  function toKey(id: string | number | undefined): string | undefined {
+    if (id === undefined || id === null)
+      return undefined
+    const s = String(id)
+    return s.length ? s : undefined
+  }
 
   // 并发控制队列
   const downloadQueue = newQueue(AVATAR_DOWNLOAD_CONCURRENCY)
@@ -103,12 +119,41 @@ function createAvatarHelper(ctx: CoreContext) {
   }
 
   /**
+   * Get avatar bytes by fileId with global dedup.
+   * If the fileId was downloaded before, reuse bytes to avoid re-downloading.
+   */
+  async function getAvatarBytes(
+    fileId: string | undefined,
+    downloadFn: () => Promise<Buffer | undefined>,
+  ): Promise<{ byte: Buffer, mimeType: string } | undefined> {
+    // Allow downloads even when fileId is unavailable; only use fileId cache when present
+    const mimeType = 'image/jpeg' // TODO: add lightweight file-type sniffing
+    if (fileId) {
+      const cached = fileIdByteCache.get(fileId)
+      if (cached)
+        return cached
+    }
+    const byte = await downloadFn()
+    if (!byte)
+      return undefined
+    const result = { byte, mimeType }
+    if (fileId)
+      fileIdByteCache.set(fileId, result)
+    return result
+  }
+
+  /**
    * Fetch and emit a user's avatar bytes, with cache and in-flight dedup.
    * Emits `entity:avatar:data` on success.
    */
   async function fetchUserAvatar(userId: string): Promise<void> {
     try {
       const key = String(Number(userId) || userId)
+      // Negative cache early exit: skip repeated requests for users without avatars
+      if (noUserAvatarCache.get(key)) {
+        logger.withFields({ userId: key }).verbose('User has no avatar (sentinel); skip fetch')
+        return
+      }
       if (inflightUsers.has(key))
         return
       inflightUsers.add(key)
@@ -117,24 +162,33 @@ function createAvatarHelper(ctx: CoreContext) {
       const fileId = resolveAvatarFileId(entity)
 
       const cached = userAvatarCache.get(key)
-      if (cached && cached.fileId && fileId && cached.fileId === fileId) {
-        logger.withFields({ userId: key }).verbose('User avatar cache hit')
-        if (cached.byte && cached.mimeType) {
-          emitter.emit('entity:avatar:data', { userId: key, byte: cached.byte, mimeType: cached.mimeType, fileId })
+      if (cached) {
+        // Hit when fileId matches OR we previously cached bytes without a fileId
+        if ((fileId && cached.fileId === fileId) || (!fileId && cached.byte && cached.mimeType)) {
+          logger.withFields({ userId: key }).verbose('User avatar cache hit')
+          if (cached.byte && cached.mimeType) {
+            emitter.emit('entity:avatar:data', { userId: key, byte: cached.byte, mimeType: cached.mimeType, fileId })
+          }
+          return
+        }
+      }
+
+      const result = entity ? await getAvatarBytes(fileId, () => downloadSmallAvatar(entity)) : undefined
+      if (!result) {
+        // Only record sentinel when we have no identifiable fileId and download yielded nothing
+        if (!fileId) {
+          noUserAvatarCache.set(key, true)
+          logger.withFields({ userId: key }).verbose('User has no avatar; record sentinel and skip')
+        }
+        else {
+          logger.withFields({ userId: key }).verbose('No avatar available for user')
         }
         return
       }
 
-      const byte = entity ? await downloadSmallAvatar(entity) : undefined
-      if (!byte) {
-        logger.withFields({ userId: key }).verbose('No avatar available for user')
-        return
-      }
+      userAvatarCache.set(key, { fileId, mimeType: result.mimeType, byte: result.byte })
 
-      const mimeType = 'image/jpeg'
-      userAvatarCache.set(key, { fileId, mimeType, byte })
-
-      emitter.emit('entity:avatar:data', { userId: key, byte, mimeType, fileId })
+      emitter.emit('entity:avatar:data', { userId: key, byte: result.byte, mimeType: result.mimeType, fileId })
     }
     catch (error) {
       logger.withError(error as Error).warn('Failed to fetch avatar for user')
@@ -150,23 +204,27 @@ function createAvatarHelper(ctx: CoreContext) {
    */
   async function fetchDialogAvatar(chatId: string | number, opts: { entityOverride?: Api.User | Api.Chat | Api.Channel } = {}): Promise<void> {
     try {
-      const idNum = typeof chatId === 'string' ? Number(chatId) : chatId
-      if (!idNum)
+      const key = toKey(chatId)
+      if (!key)
         return
-
-      if (inflightChats.has(idNum))
+      // Negative cache early exit for chats/channels without avatars
+      if (noChatAvatarCache.get(key)) {
+        logger.withFields({ chatId }).verbose('Chat has no avatar (sentinel); skip fetch')
         return
-      inflightChats.add(idNum)
+      }
+      if (inflightChats.has(key))
+        return
+      inflightChats.add(key)
 
-      let entity = opts.entityOverride ?? dialogEntityCache.get(idNum)
+      let entity = opts.entityOverride ?? dialogEntityCache.get(key)
       if (!entity) {
         entity = await getClient().getEntity(String(chatId)) as Api.User | Api.Chat | Api.Channel
         // Cache entity for future single fetches
         try {
           // eslint-disable-next-line ts/no-explicit-any
-          if (entity && (entity as any).id?.toJSNumber)
+          if (entity && (entity as any).id)
             // eslint-disable-next-line ts/no-explicit-any
-            dialogEntityCache.set((entity as any).id.toJSNumber(), entity)
+            dialogEntityCache.set(String((entity as any).id.toJSNumber?.() ?? (entity as any).id), entity)
         }
         catch {}
       }
@@ -174,84 +232,101 @@ function createAvatarHelper(ctx: CoreContext) {
         return
 
       const fileId = resolveAvatarFileId(entity)
-      const cached = chatAvatarCache.get(idNum)
-      if (cached && cached.fileId && fileId && cached.fileId === fileId) {
-        logger.withFields({ chatId: idNum }).verbose('Single avatar cache hit; skip emit')
+      const cached = chatAvatarCache.get(key)
+      if (cached && ((fileId && cached.fileId === fileId) || (!fileId && cached.byte && cached.mimeType))) {
+        logger.withFields({ chatId }).verbose('Single avatar cache hit; skip emit')
         return
       }
 
-      const byte = await downloadSmallAvatar(entity)
-      if (!byte) {
-        logger.withFields({ chatId: idNum }).verbose('No avatar available for single dialog fetch')
+      const result = await getAvatarBytes(fileId, () => downloadSmallAvatar(entity))
+      if (!result) {
+        if (!fileId) {
+          noChatAvatarCache.set(key, true)
+          logger.withFields({ chatId }).verbose('Chat has no avatar; record sentinel and skip')
+        }
+        else {
+          logger.withFields({ chatId }).verbose('No avatar available for single dialog fetch')
+        }
         return
       }
 
-      const mimeType = 'image/jpeg'
-      chatAvatarCache.set(idNum, { fileId, mimeType, byte })
+      chatAvatarCache.set(key, { fileId, mimeType: result.mimeType, byte: result.byte })
 
-      emitter.emit('dialog:avatar:data', { chatId: idNum, byte, mimeType, fileId })
+      const idNum = typeof chatId === 'string' ? Number(chatId) : chatId
+      emitter.emit('dialog:avatar:data', { chatId: idNum, byte: result.byte, mimeType: result.mimeType, fileId })
     }
     catch (error) {
       logger.withError(error as Error).warn('Failed to fetch single avatar for dialog')
     }
     finally {
       try {
-        const id = typeof chatId === 'string' ? Number(chatId) : chatId
-        if (id)
-          inflightChats.delete(id as number)
+        const key2 = toKey(chatId)
+        if (key2)
+          inflightChats.delete(key2)
       }
       catch {}
     }
   }
 
   /**
-   * Batch fetch avatars for a list of dialogs with concurrency.
-   * Emits incremental `dialog:avatar:data` events as each item completes.
+   * Batch fetch avatars for a list of dialogs.
+   * Concurrency is governed exclusively by the internal `downloadQueue`.
+   * This avoids a "queue of queues" situation and ensures steady throughput.
    */
-  async function fetchDialogAvatars(dialogList: Dialog[], concurrency = 12): Promise<void> {
+  async function fetchDialogAvatars(dialogList: Dialog[], _concurrency = 4): Promise<void> {
     const total = dialogList.length
     if (total === 0)
       return
 
-    async function worker() {
-      while (dialogList.length > 0) {
-        const dialog = dialogList.shift()!
-        if (!dialog?.entity)
-          continue
+    // Create one task per dialog. Each task delegates concurrency to downloadQueue.
+    const tasks = dialogList.map(async (dialog) => {
+      if (!dialog?.entity)
+        return
 
-        try {
-          const id = dialog.entity.id?.toJSNumber?.()
-          if (!id)
-            continue
+      try {
+        const id = dialog.entity.id?.toJSNumber?.()
+        if (!id)
+          return
+        const key = toKey(id)!
 
-          const fileId = resolveAvatarFileId(dialog.entity as Api.User | Api.Chat | Api.Channel)
+        // Early skip if sentinel says no avatar
+        if (noChatAvatarCache.get(key)) {
+          logger.withFields({ chatId: id }).verbose('Chat has no avatar (sentinel); skip batch fetch')
+          return
+        }
 
-          const cached = chatAvatarCache.get(id)
-          // If cache exists and fileId unchanged, skip network and emit to reduce noise.
-          if (cached && cached.fileId && fileId && cached.fileId === fileId) {
-            logger.withFields({ chatId: id }).verbose('Avatar cache hit; skip emit')
-            continue
+        const fileId = resolveAvatarFileId(dialog.entity as Api.User | Api.Chat | Api.Channel)
+        const cached = chatAvatarCache.get(key)
+        // If cache exists and fileId unchanged OR we have bytes cached without fileId, skip network.
+        if (cached && ((fileId && cached.fileId === fileId) || (!fileId && cached.byte && cached.mimeType))) {
+          logger.withFields({ chatId: id }).verbose('Avatar cache hit; skip emit')
+          return
+        }
+
+        // Delegates concurrency via global downloadQueue, with fileId-level dedup
+        const result = await getAvatarBytes(fileId, () => downloadSmallAvatar(dialog.entity as Api.User | Api.Chat | Api.Channel))
+        if (!result) {
+          if (!fileId) {
+            noChatAvatarCache.set(key, true)
+            logger.withFields({ chatId: id }).verbose('Chat has no avatar; record sentinel and skip batch fetch')
           }
-
-          const byte = await downloadSmallAvatar(dialog.entity as Api.User | Api.Chat | Api.Channel)
-          if (!byte) {
+          else {
             logger.withFields({ chatId: id }).verbose('No avatar available for dialog')
-            continue
           }
-
-          const mimeType = 'image/jpeg'
-          chatAvatarCache.set(id, { fileId, mimeType, byte })
-
-          emitter.emit('dialog:avatar:data', { chatId: id, byte, mimeType, fileId })
+          return
         }
-        catch (error) {
-          logger.withError(error as Error).warn('Failed to fetch avatar for dialog')
-        }
+
+        chatAvatarCache.set(key, { fileId, mimeType: result.mimeType, byte: result.byte })
+
+        emitter.emit('dialog:avatar:data', { chatId: id, byte: result.byte, mimeType: result.mimeType, fileId })
       }
-    }
+      catch (error) {
+        logger.withError(error as Error).warn('Failed to fetch avatar for dialog')
+      }
+    })
 
-    const workers = Array.from({ length: Math.min(concurrency, total) }, () => worker())
-    await Promise.allSettled(workers)
+    // Wait for all tasks to settle; errors are logged per-task
+    await Promise.allSettled(tasks)
   }
 
   return {
@@ -264,12 +339,18 @@ function createAvatarHelper(ctx: CoreContext) {
       userAvatarCache.clear()
       chatAvatarCache.clear()
       dialogEntityCache.clear()
+      noUserAvatarCache.clear()
+      noChatAvatarCache.clear()
+      fileIdByteCache.clear()
       logger.log('Avatar cache manually cleared')
     },
     getCacheStats: () => ({
       userAvatars: userAvatarCache.size,
       chatAvatars: chatAvatarCache.size,
       entities: dialogEntityCache.size,
+      noUserAvatars: noUserAvatarCache.size,
+      noChatAvatars: noChatAvatarCache.size,
+      fileIdBytes: fileIdByteCache.size,
       maxSize: MAX_AVATAR_CACHE_SIZE,
       ttl: `${AVATAR_CACHE_TTL / 1000}s`,
     }),
