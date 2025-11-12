@@ -10,8 +10,6 @@ import { routes as generatedRoutes } from 'vue-router/auto-routes'
 
 import App from './App.vue'
 
-import { ensureChatAvatarDirective } from './directives/ensure-chat-avatar'
-import { ensureUserAvatarDirective } from './directives/ensure-user-avatar'
 import { i18n } from './modules/i18n'
 
 import '@unocss/reset/tailwind.css'
@@ -56,6 +54,4 @@ app.use(router)
 app.use(VueQueryPlugin)
 app.use(pinia)
 app.use(autoAnimatePlugin)
-app.directive('ensure-chat-avatar', ensureChatAvatarDirective)
-app.directive('ensure-user-avatar', ensureUserAvatarDirective)
 app.mount('#app')

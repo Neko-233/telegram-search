@@ -15,13 +15,6 @@ export interface OptimizeOptions {
   maxSize?: number
   quality?: number
 }
-/**
- * No-op avatar optimization: returns original Blob without canvas processing.
- * Kept for backward compatibility to avoid breaking imports.
- */
-export async function optimizeAvatarBlob(byte: Uint8Array, mimeType: string, _options: OptimizeOptions = {}): Promise<Blob> {
-  return bytesToBlob(byte, mimeType)
-}
 
 /**
  * Check whether the given avatar bytes are decodable as an image.

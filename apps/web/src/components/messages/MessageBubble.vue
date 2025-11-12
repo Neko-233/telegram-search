@@ -7,6 +7,8 @@ import { computed } from 'vue'
 import Avatar from '../ui/Avatar.vue'
 import MediaRenderer from './media/MediaRenderer.vue'
 
+import { useEnsureUserAvatar } from '../../composables/useEnsureAvatar'
+
 const props = defineProps<{
   message: CoreMessage
 }>()
@@ -25,13 +27,15 @@ function useMessageAvatar() {
 }
 
 const { avatarSrc } = useMessageAvatar()
+
+// Ensure avatar on visible mount without using directives
+useEnsureUserAvatar(props.message.fromId)
 </script>
 
 <template>
   <div class="group mx-3 my-1 flex items-start gap-3 rounded-xl p-3 transition-all duration-200 md:mx-4 md:gap-4 hover:bg-accent/50">
     <div class="flex-shrink-0 pt-0.5">
       <Avatar
-        v-ensure-user-avatar="{ userId: message.fromId }"
         :src="avatarSrc"
         :name="message.fromName"
         size="md"

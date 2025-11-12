@@ -273,7 +273,7 @@ function createAvatarHelper(ctx: CoreContext) {
    * Concurrency is governed exclusively by the internal `downloadQueue`.
    * This avoids a "queue of queues" situation and ensures steady throughput.
    */
-  async function fetchDialogAvatars(dialogList: Dialog[], _concurrency = 4): Promise<void> {
+  async function fetchDialogAvatars(dialogList: Dialog[]): Promise<void> {
     const total = dialogList.length
     if (total === 0)
       return

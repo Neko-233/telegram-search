@@ -3,7 +3,7 @@ import type { ClientRegisterEventHandlerFn } from '.'
 import { useAvatarStore } from '../stores/useAvatar'
 import { useChatStore } from '../stores/useChat'
 import { persistChatAvatar } from '../utils/avatar-cache'
-import { canDecodeAvatar, optimizeAvatarBlob } from '../utils/image'
+import { bytesToBlob, canDecodeAvatar } from '../utils/image'
 
 /**
  * Register dialog-related client event handlers.
@@ -62,8 +62,8 @@ export function registerDialogEventHandlers(
       useAvatarStore().markChatFetchCompleted(data.chatId)
       return
     }
-    // Optimize (no-op) and create blob URL
-    const blob = await optimizeAvatarBlob(buffer, data.mimeType)
+    // Convert bytes to Blob and create blob URL
+    const blob = bytesToBlob(buffer, data.mimeType)
     const url = URL.createObjectURL(blob)
 
     // Persist optimized chat avatar

@@ -3,13 +3,15 @@ import type { CoreMessage } from '@tg-search/core/types'
 
 import { formatMessageTimestamp, useAvatarStore } from '@tg-search/client'
 import { useClipboard } from '@vueuse/core'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
 import Avatar from '../ui/Avatar.vue'
 import ContextMenu from '../ui/ContextMenu.vue'
+
+import { ensureUserAvatarImmediate } from '../../composables/useEnsureAvatar'
 
 const props = defineProps<{
   messages: CoreMessage[]
@@ -96,6 +98,18 @@ function getUserAvatarUrl(userId: string | number | undefined): string | undefin
     return undefined
   return avatarStore.getUserAvatarUrl(userId)
 }
+
+/**
+ * Ensure avatars for current list items when data changes.
+ * Calls immediate helper without lifecycle hooks to avoid Vue warnings.
+ */
+async function ensureAvatarsForMessages() {
+  const tasks = props.messages.map(m => ensureUserAvatarImmediate(m.fromId))
+  await Promise.all(tasks)
+}
+
+ensureAvatarsForMessages()
+watch(() => props.messages, ensureAvatarsForMessages)
 </script>
 
 <template>
@@ -114,7 +128,6 @@ function getUserAvatarUrl(userId: string | number | undefined): string | undefin
     >
       <div class="flex-shrink-0 pt-0.5">
         <Avatar
-          v-ensure-user-avatar="{ userId: item.fromId }"
           :src="getUserAvatarUrl(item.fromId)"
           :name="item.fromName"
           size="md"

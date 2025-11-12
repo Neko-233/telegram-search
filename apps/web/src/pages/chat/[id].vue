@@ -14,6 +14,7 @@ import Avatar from '../../components/ui/Avatar.vue'
 import VirtualMessageList from '../../components/VirtualMessageList.vue'
 
 import { Button } from '../../components/ui/Button'
+import { useEnsureChatAvatar } from '../../composables/useEnsureAvatar'
 
 const { t } = useI18n()
 
@@ -62,6 +63,15 @@ function useChatHeaderAvatar() {
 }
 
 const { chatAvatarSrc } = useChatHeaderAvatar()
+
+/**
+ * Ensure chat header avatar availability via composable.
+ * - Watches `currentChat.id` and `currentChat.avatarFileId` reactively.
+ * - Prefills from cache, then fetches via network if missing.
+ */
+const chatIdRef = computed(() => currentChat.value?.id)
+const fileIdRef = computed(() => currentChat.value?.avatarFileId)
+useEnsureChatAvatar(chatIdRef, fileIdRef)
 
 /**
  * Avatar policy: remove batch priming to enforce visible-only fetching.
@@ -261,7 +271,6 @@ watch(
     <div class="flex items-center justify-between border-b bg-card/50 px-6 py-4 backdrop-blur-sm">
       <div class="flex items-center gap-3">
         <Avatar
-          v-ensure-chat-avatar="{ chatId: currentChat?.id, fileId: currentChat?.avatarFileId }"
           class="h-10 w-10 flex items-center justify-center rounded-full bg-primary/10"
           :src="chatAvatarSrc"
           :name="currentChat?.name"

@@ -3,7 +3,7 @@ import type { ClientRegisterEventHandler } from '.'
 import { useBridgeStore } from '../composables/useBridge'
 import { useAvatarStore } from '../stores/useAvatar'
 import { persistUserAvatar } from '../utils/avatar-cache'
-import { canDecodeAvatar, optimizeAvatarBlob } from '../utils/image'
+import { bytesToBlob, canDecodeAvatar } from '../utils/image'
 
 /**
  * Register entity-related client event handlers.
@@ -46,7 +46,8 @@ export function registerEntityEventHandlers(
       avatarStore.markUserFetchCompleted(data.userId)
       return
     }
-    const blob = await optimizeAvatarBlob(buffer, data.mimeType)
+    // Convert bytes to Blob directly (optimization step removed)
+    const blob = bytesToBlob(buffer, data.mimeType)
     const url = URL.createObjectURL(blob)
 
     // Persist optimized blob into IndexedDB for cache-first load next time

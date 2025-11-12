@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { ChatGroup } from '@tg-search/client'
+import type { CoreDialog } from '@tg-search/core/types'
 
 import buildTime from '~build/time'
 
@@ -13,6 +14,7 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 
+import EnsureChatAvatarOnMount from '../components/helpers/EnsureChatAvatarOnMount.vue'
 import LanguageSelector from '../components/layout/LanguageSelector.vue'
 import SidebarSelector from '../components/layout/SidebarSelector.vue'
 import Avatar from '../components/ui/Avatar.vue'
@@ -165,7 +167,7 @@ const { userAvatarSrc } = useCurrentUserAvatar()
  * - Avoids sequential IndexedDB waits when chat list is large.
  * - Only warms cache; network fetch continues to be driven by server events.
  */
-async function prefillChatAvatarsParallel(list: any[]) {
+async function prefillChatAvatarsParallel(list: CoreDialog[]) {
   const tasks = list.map(chat => prefillChatAvatarIntoStore(chat.id))
   try {
     await Promise.all(tasks)
@@ -176,16 +178,14 @@ async function prefillChatAvatarsParallel(list: any[]) {
 }
 
 // Prefill chat avatars when chat list changes (parallelized)
-watch(chats, (list) => {
-  void prefillChatAvatarsParallel(list)
-}, { immediate: true })
+// Removed global prefill for entire chat list to avoid non-visible loads.
 
 /**
  * Prefill avatars for currently visible chats only.
  * - Warms disk -> memory cache for first `count` items
- * - Does NOT trigger network; visible elements use v-ensure-chat-avatar
+ * - Does NOT trigger network; visible elements use composable ensure
  */
-async function prioritizeVisibleAvatars(list: any[], count = 50) {
+async function prioritizeVisibleAvatars(list: CoreDialog[], count = 50) {
   const top = list.slice(0, count)
   await prefillChatAvatarsParallel(top)
 }
@@ -196,6 +196,8 @@ watch(activeGroupChats, (list) => {
     return
   void prioritizeVisibleAvatars(list)
 }, { immediate: true })
+
+// Visible-only ensure handled per list item via helper component.
 </script>
 
 <template>
@@ -318,11 +320,12 @@ watch(activeGroupChats, (list) => {
             <template #default="{ item: chat }">
               <div
                 :key="chat.id"
-                v-ensure-chat-avatar="{ chatId: chat.id, fileId: chat.avatarFileId }"
                 :class="{ 'bg-accent text-accent-foreground': route.params.chatId === chat.id.toString() }"
                 class="mx-2 my-0.5 flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 transition-colors hover:bg-accent hover:text-accent-foreground"
                 @click="router.push(`/chat/${chat.id}`)"
               >
+                <!-- Ensure avatar only when this list item is rendered (visible) -->
+                <EnsureChatAvatarOnMount :chat-id="chat.id" :file-id="chat.avatarFileId" />
                 <Avatar
                   :src="avatarStore.getChatAvatarUrl(chat.id)"
                   :name="chat.name"
