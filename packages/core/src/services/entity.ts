@@ -40,9 +40,18 @@ export function createEntityService(ctx: CoreContext) {
     await avatarHelper.fetchUserAvatar(userId, expectedFileId)
   }
 
+  /**
+   * Prime the avatar LRU cache with fileId information from frontend IndexedDB.
+   * This allows subsequent fetchUserAvatar calls to hit cache without entity fetch.
+   */
+  async function primeUserAvatarCache(userId: string, fileId: string) {
+    avatarHelper.primeUserAvatarCache(userId, fileId)
+  }
+
   return {
     getEntity,
     getMeInfo,
     fetchUserAvatar,
+    primeUserAvatarCache,
   }
 }

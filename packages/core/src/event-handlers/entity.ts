@@ -17,5 +17,10 @@ export function registerEntityEventHandlers(ctx: CoreContext) {
       logger.withFields({ userId, fileId }).verbose('Fetching user avatar')
       await entityService.fetchUserAvatar(userId, fileId)
     })
+
+    emitter.on('entity:avatar:prime-cache', async ({ userId, fileId }) => {
+      logger.withFields({ userId, fileId }).verbose('Priming avatar cache')
+      await entityService.primeUserAvatarCache(userId, fileId)
+    })
   }
 }

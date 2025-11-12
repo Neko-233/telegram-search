@@ -32,8 +32,6 @@ export function registerEntityEventHandlers(
     }
 
     if (!buffer) {
-      // Use warn to comply with lint rule: allow only warn/error
-      console.warn('[Avatar] Missing byte for user avatar')
       // Clear in-flight flag to avoid repeated sends
       avatarStore.markUserFetchCompleted(data.userId)
       return
@@ -52,7 +50,7 @@ export function registerEntityEventHandlers(
 
     // Persist optimized blob into IndexedDB for cache-first load next time
     try {
-      await persistUserAvatar(data.userId, blob, data.mimeType)
+      await persistUserAvatar(data.userId, blob, data.mimeType, data.fileId)
     }
     catch (error) {
       // Warn-only logging to comply with lint rules

@@ -125,6 +125,11 @@ export interface EntityEventToCore {
    * Optional fileId allows core to check cache before fetching.
    */
   'entity:avatar:fetch': (data: { userId: string, fileId?: string }) => void
+  /**
+   * Prime the core LRU cache with fileId information from frontend IndexedDB.
+   * This allows fileId-based cache validation without requiring entity fetch.
+   */
+  'entity:avatar:prime-cache': (data: { userId: string, fileId: string }) => void
 }
 
 export interface EntityEventFromCore {

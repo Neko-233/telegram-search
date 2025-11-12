@@ -1,6 +1,6 @@
 import type { ComputedRef, Ref } from 'vue'
 
-import { prefillChatAvatarIntoStore, prefillUserAvatarIntoStore, useAvatarStore } from '@tg-search/client'
+import { prefillChatAvatarIntoStore, prefillUserAvatarIntoStore, useAvatarStore, useBridgeStore } from '@tg-search/client'
 import { onMounted, unref, watch } from 'vue'
 
 type MaybeRef<T> = T | Ref<T> | ComputedRef<T>
@@ -20,19 +20,30 @@ export function useEnsureUserAvatar(userId: MaybeRef<string | number | undefined
     if (!id)
       return
     const key = String(id)
+
     // 1. Check in-memory cache first
     const url = avatarStore.getUserAvatarUrl(id)
-    if (url)
+    if (url) {
       return
+    }
+
     // 2. Check if a prefill is already in-flight for this userId
-    if (avatarStore.inflightUserPrefillIds.has(key))
+    if (avatarStore.inflightUserPrefillIds.has(key)) {
       return
+    }
+
     // 3. Mark this userId as being prefilled to prevent duplicate work
     avatarStore.inflightUserPrefillIds.add(key)
 
+    let prefillFileId: string | undefined
     try {
       // Attempt to prefill from IndexedDB.
-      await prefillUserAvatarIntoStore(key)
+      const prefillSuccess = await prefillUserAvatarIntoStore(key)
+
+      // If prefill succeeded, get the fileId for core layer cache priming
+      if (prefillSuccess) {
+        prefillFileId = avatarStore.getUserAvatarFileId(id)
+      }
     }
     catch {
       /* ignore prefill error and continue */
@@ -48,6 +59,15 @@ export function useEnsureUserAvatar(userId: MaybeRef<string | number | undefined
       // Get fileId if available for core layer cache validation
       const fileId = avatarStore.getUserAvatarFileId(id)
       avatarStore.ensureUserAvatar(String(id), fileId)
+    }
+    else {
+      const fileId = prefillFileId || avatarStore.getUserAvatarFileId(id)
+
+      // If prefill succeeded, use the front-end data to preheat the core layer's LRU cache.
+      if (fileId) {
+        const bridgeStore = useBridgeStore()
+        bridgeStore.sendEvent('entity:avatar:prime-cache', { userId: key, fileId })
+      }
     }
   }
 

@@ -162,17 +162,25 @@ function createAvatarHelper(ctx: CoreContext) {
       // Early cache validation: if expectedFileId matches cached fileId, skip entity fetch and download
       if (expectedFileId) {
         const cached = userAvatarCache.get(key)
+        logger.withFields({ userId: key, expectedFileId, cachedFileId: cached?.fileId }).verbose('User avatar early cache validation')
         if (cached && cached.fileId === expectedFileId) {
-          logger.withFields({ userId: key, fileId: expectedFileId }).verbose('User avatar cache hit with expected fileId')
+          logger.withFields({ userId: key, fileId: expectedFileId }).verbose('User avatar cache hit with expected fileId - SKIPPING DOWNLOAD')
           if (cached.byte && cached.mimeType) {
             emitter.emit('entity:avatar:data', { userId: key, byte: cached.byte, mimeType: cached.mimeType, fileId: expectedFileId })
           }
           return
         }
+        else {
+          logger.withFields({ userId: key, expectedFileId, cachedFileId: cached?.fileId, match: cached?.fileId === expectedFileId }).verbose('User avatar early cache validation FAILED - will download')
+        }
+      }
+      else {
+        logger.withFields({ userId: key }).verbose('No expectedFileId provided for early cache validation')
       }
 
       const entity = await getClient().getEntity(userId) as Api.User
       const fileId = resolveAvatarFileId(entity)
+      logger.withFields({ userId: key, resolvedFileId: fileId }).verbose('Resolved fileId from entity')
 
       const cached = userAvatarCache.get(key)
       if (cached) {
@@ -347,6 +355,16 @@ function createAvatarHelper(ctx: CoreContext) {
     fetchDialogAvatar,
     fetchDialogAvatars,
     dialogEntityCache,
+    // Prime the LRU cache with fileId information (without avatar bytes)
+    primeUserAvatarCache: (userId: string, fileId: string) => {
+      const key = String(Number(userId) || userId)
+      // Only prime if we don't already have cached bytes
+      const existing = userAvatarCache.get(key)
+      if (!existing || !existing.byte) {
+        logger.withFields({ userId: key, fileId }).verbose('Priming user avatar cache with fileId')
+        userAvatarCache.set(key, { fileId, mimeType: '', byte: undefined })
+      }
+    },
     // Export cleanup method for external invocation
     clearCache: () => {
       userAvatarCache.clear()
