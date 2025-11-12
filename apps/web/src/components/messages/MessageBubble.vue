@@ -31,6 +31,7 @@ const { avatarSrc } = useMessageAvatar()
   <div class="group mx-3 my-1 flex items-start gap-3 rounded-xl p-3 transition-all duration-200 md:mx-4 md:gap-4 hover:bg-accent/50">
     <div class="flex-shrink-0 pt-0.5">
       <Avatar
+        v-ensure-user-avatar="{ userId: message.fromId }"
         :src="avatarSrc"
         :name="message.fromName"
         size="md"

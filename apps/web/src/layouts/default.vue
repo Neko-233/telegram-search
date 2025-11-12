@@ -181,16 +181,13 @@ watch(chats, (list) => {
 }, { immediate: true })
 
 /**
- * Prioritize fetching avatars for currently visible chats.
- * - Prefills small set from disk cache
- * - Triggers prioritized network fetch for missing avatars
+ * Prefill avatars for currently visible chats only.
+ * - Warms disk -> memory cache for first `count` items
+ * - Does NOT trigger network; visible elements use v-ensure-chat-avatar
  */
 async function prioritizeVisibleAvatars(list: any[], count = 50) {
   const top = list.slice(0, count)
   await prefillChatAvatarsParallel(top)
-  for (const chat of top) {
-    avatarStore.ensureChatAvatar(chat.id, chat.avatarFileId)
-  }
 }
 
 // Prioritize visible avatars on group change and initial render

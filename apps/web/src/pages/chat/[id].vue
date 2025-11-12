@@ -64,46 +64,10 @@ function useChatHeaderAvatar() {
 const { chatAvatarSrc } = useChatHeaderAvatar()
 
 /**
- * Prime user avatars for messages in view with deduplication.
- * - Prefills from persistent cache for new user IDs.
- * - Ensures a network fetch only once per unique user ID per session.
- * - Centralized at page level to avoid per-bubble repeated work.
- * - Executes prefill/ensure concurrently to avoid sequential waits when many users appear.
+ * Avatar policy: remove batch priming to enforce visible-only fetching.
+ * Message-level avatar fetching is handled by v-ensure-user-avatar directive
+ * on each visible MessageBubble.
  */
-function useMessageAvatarsPrime() {
-  const seenUserIds = new Set<string>()
-
-  watch(sortedMessageArray, async (messages) => {
-    // Collect unique user IDs from current message window
-    const uniqueIds = new Set<string>()
-    for (const m of messages) {
-      if (m.fromId)
-        uniqueIds.add(m.fromId)
-    }
-
-    // Only prime avatars we haven't processed in this session
-    const toPrime: string[] = []
-    for (const id of uniqueIds) {
-      if (!seenUserIds.has(id))
-        toPrime.push(id)
-    }
-
-    // Prefill from IndexedDB cache, then ensure network fetch (parallel)
-    const primeTasks = toPrime.map(async (userId) => {
-      try {
-        await prefillUserAvatarIntoStore(userId)
-      }
-      finally {
-        avatarStore.ensureUserAvatar(userId)
-        seenUserIds.add(userId)
-      }
-    })
-    await Promise.all(primeTasks)
-  }, { immediate: true })
-}
-
-// Initialize deduplicated avatar priming for the current chat
-useMessageAvatarsPrime()
 
 // Initial load when component mounts
 onMounted(async () => {
@@ -297,6 +261,7 @@ watch(
     <div class="flex items-center justify-between border-b bg-card/50 px-6 py-4 backdrop-blur-sm">
       <div class="flex items-center gap-3">
         <Avatar
+          v-ensure-chat-avatar="{ chatId: currentChat?.id, fileId: currentChat?.avatarFileId }"
           class="h-10 w-10 flex items-center justify-center rounded-full bg-primary/10"
           :src="chatAvatarSrc"
           :name="currentChat?.name"

@@ -38,13 +38,31 @@ export const ensureChatAvatarDirective = {
       }
     }
 
+    /**
+     * Find nearest scrollable ancestor to use as observer root.
+     * Ensures visibility detection aligns with the virtual list container.
+     */
+    const findScrollRoot = (node: HTMLElement | null): HTMLElement | null => {
+      let current: HTMLElement | null = node
+      while (current && current.parentElement) {
+        const style = window.getComputedStyle(current)
+        const overflowY = style.overflowY
+        const isScrollable = (overflowY === 'auto' || overflowY === 'scroll') && current.scrollHeight > current.clientHeight
+        if (isScrollable)
+          return current
+        current = current.parentElement as HTMLElement
+      }
+      return null
+    }
+
+    const root = findScrollRoot(el)
     const io = new IntersectionObserver((entries) => {
       for (const entry of entries) {
         if (entry.isIntersecting) {
           tryEnsure()
         }
       }
-    }, { rootMargin: '400px' })
+    }, { root, rootMargin: '200px' })
 
     io.observe(el)
     // @ts-expect-error store observer on element for cleanup
