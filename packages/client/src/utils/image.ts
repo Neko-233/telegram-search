@@ -28,7 +28,8 @@ export async function optimizeAvatarBlob(byte: Uint8Array, mimeType: string, _op
  * Returns true if `createImageBitmap` succeeds, false otherwise.
  */
 export async function canDecodeAvatar(byte: Uint8Array | undefined, mimeType: string | undefined): Promise<boolean> {
-  if (!byte || !mimeType) return false
+  if (!byte || !mimeType)
+    return false
   const blob = bytesToBlob(byte, mimeType)
   try {
     const imageBitmap = await createImageBitmap(blob)
@@ -44,7 +45,8 @@ export async function canDecodeAvatar(byte: Uint8Array | undefined, mimeType: st
  */
 export function getInitialChar(name?: string): string {
   const trimmed = (name ?? '').trim()
-  if (trimmed.length === 0) return '?'
+  if (trimmed.length === 0)
+    return '?'
   const first = Array.from(trimmed)[0]
   return first.length === 1 ? first.toUpperCase() : first
 }
