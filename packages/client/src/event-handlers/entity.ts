@@ -22,8 +22,9 @@ export function registerEntityEventHandlers(
 
     let buffer: Uint8Array | undefined
     try {
-      if ((data.byte as any)?.data?.length)
-        buffer = new Uint8Array((data.byte as any).data)
+      // Type guard to check if byte is an object with data property
+      if (typeof data.byte === 'object' && 'data' in data.byte && Array.isArray(data.byte.data))
+        buffer = new Uint8Array(data.byte.data)
       else buffer = data.byte as Uint8Array
     }
     catch (error) {

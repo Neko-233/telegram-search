@@ -32,14 +32,3 @@ export async function canDecodeAvatar(byte: Uint8Array | undefined, mimeType: st
     return false
   }
 }
-
-/**
- * Extract first character suitable for initials fallback when no image src is set.
- */
-export function getInitialChar(name?: string): string {
-  const trimmed = (name ?? '').trim()
-  if (trimmed.length === 0)
-    return '?'
-  const first = Array.from(trimmed)[0]
-  return first.length === 1 ? first.toUpperCase() : first
-}

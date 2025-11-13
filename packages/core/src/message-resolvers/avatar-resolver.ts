@@ -365,6 +365,18 @@ function createAvatarHelper(ctx: CoreContext) {
         userAvatarCache.set(key, { fileId, mimeType: '', byte: undefined })
       }
     },
+    // Prime the LRU cache with chat avatar fileId information (without avatar bytes)
+    primeChatAvatarCache: (chatId: string, fileId: string) => {
+      const key = toKey(chatId)
+      if (!key)
+        return
+      // Only prime if we don't already have cached bytes
+      const existing = chatAvatarCache.get(key)
+      if (!existing || !existing.byte) {
+        logger.withFields({ chatId: key, fileId }).verbose('Priming chat avatar cache with fileId')
+        chatAvatarCache.set(key, { fileId, mimeType: '', byte: undefined })
+      }
+    },
     // Export cleanup method for external invocation
     clearCache: () => {
       userAvatarCache.clear()

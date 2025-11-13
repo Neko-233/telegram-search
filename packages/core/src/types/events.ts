@@ -130,6 +130,11 @@ export interface EntityEventToCore {
    * This allows fileId-based cache validation without requiring entity fetch.
    */
   'entity:avatar:prime-cache': (data: { userId: string, fileId: string }) => void
+  /**
+   * Prime the core LRU cache with chat avatar fileId information from frontend IndexedDB.
+   * This allows fileId-based cache validation without requiring entity fetch.
+   */
+  'entity:chat-avatar:prime-cache': (data: { chatId: string, fileId: string }) => void
 }
 
 export interface EntityEventFromCore {

@@ -48,10 +48,19 @@ export function createEntityService(ctx: CoreContext) {
     avatarHelper.primeUserAvatarCache(userId, fileId)
   }
 
+  /**
+   * Prime the chat avatar LRU cache with fileId information from frontend IndexedDB.
+   * This allows subsequent fetchDialogAvatar calls to hit cache without entity fetch.
+   */
+  async function primeChatAvatarCache(chatId: string, fileId: string) {
+    avatarHelper.primeChatAvatarCache(chatId, fileId)
+  }
+
   return {
     getEntity,
     getMeInfo,
     fetchUserAvatar,
     primeUserAvatarCache,
+    primeChatAvatarCache,
   }
 }

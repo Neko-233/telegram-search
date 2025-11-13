@@ -95,12 +95,37 @@ export const useAvatarStore = defineStore('avatar', () => {
   }
 
   /**
+   * Get cached avatar fileId for a chat.
+   * Returns undefined if missing or expired.
+   */
+  function getChatAvatarFileId(chatId: string | number | undefined): string | undefined {
+    if (!chatId)
+      return undefined
+    const key = String(chatId)
+    const entry = chatAvatars.value.get(key)
+    if (!entry)
+      return undefined
+    if (entry.expiresAt && Date.now() > entry.expiresAt) {
+      if (entry.blobUrl)
+        URL.revokeObjectURL(entry.blobUrl)
+      chatAvatars.value.delete(key)
+      return undefined
+    }
+    return entry.fileId
+  }
+
+  /**
    * Set or update a user's avatar cache entry.
    * Accepts blob URL and metadata, and applies TTL by default.
+   * Revokes previous blob URL to prevent memory leaks.
    */
   function setUserAvatar(userId: string | number, data: { blobUrl: string, fileId?: string, mimeType?: string, ttlMs?: number }) {
     const key = String(userId)
     const ttl = data.ttlMs ?? DEFAULT_TTL_MS
+    const oldEntry = userAvatars.value.get(key)
+    if (oldEntry?.blobUrl) {
+      URL.revokeObjectURL(oldEntry.blobUrl)
+    }
     userAvatars.value.set(key, {
       id: key,
       blobUrl: data.blobUrl,
@@ -114,10 +139,15 @@ export const useAvatarStore = defineStore('avatar', () => {
   /**
    * Set or update a chat's avatar cache entry.
    * Accepts blob URL and metadata, and applies TTL by default.
+   * Revokes previous blob URL to prevent memory leaks.
    */
   function setChatAvatar(chatId: string | number, data: { blobUrl: string, fileId?: string, mimeType?: string, ttlMs?: number }) {
     const key = String(chatId)
     const ttl = data.ttlMs ?? DEFAULT_TTL_MS
+    const oldEntry = chatAvatars.value.get(key)
+    if (oldEntry?.blobUrl) {
+      URL.revokeObjectURL(oldEntry.blobUrl)
+    }
     chatAvatars.value.set(key, {
       id: key,
       blobUrl: data.blobUrl,
@@ -292,6 +322,8 @@ export const useAvatarStore = defineStore('avatar', () => {
     markUserFetchCompleted,
     markChatFetchCompleted,
     cleanupExpired,
+    // 新增：获取 chat avatar fileId 用于预热核心层
+    getChatAvatarFileId,
   }
 })
 

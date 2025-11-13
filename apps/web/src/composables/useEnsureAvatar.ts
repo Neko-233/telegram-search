@@ -96,10 +96,19 @@ export function useEnsureChatAvatar(chatId: MaybeRef<string | number | undefined
       return
     try {
       // Attempt to prefill from IndexedDB.
-      await prefillChatAvatarIntoStore(String(cid))
+      const prefillSuccess = await prefillChatAvatarIntoStore(String(cid))
       // After prefilling, if the avatar is now valid (correct fileId), we can stop.
       if (avatarStore.hasValidChatAvatar(String(cid), fid))
         return
+
+      // If prefill succeeded, use the front-end data to preheat the core layer's LRU cache.
+      if (prefillSuccess) {
+        const fileId = avatarStore.getChatAvatarFileId(cid)
+        if (fileId) {
+          const bridgeStore = useBridgeStore()
+          bridgeStore.sendEvent('entity:chat-avatar:prime-cache' as any, { chatId: String(cid), fileId })
+        }
+      }
     }
     catch {
       /* ignore prefill error and continue */
@@ -134,10 +143,16 @@ export async function ensureUserAvatarImmediate(userId: string | number | undefi
   avatarStore.inflightUserPrefillIds.add(key)
 
   try {
-    // Attempt to prefill from IndexedDB. If successful, the operation is complete.
+    // Attempt to prefill from IndexedDB. If successful, prime core cache and return.
     const prefillSuccess = await prefillUserAvatarIntoStore(key)
-    if (prefillSuccess)
+    if (prefillSuccess) {
+      const fileId = avatarStore.getUserAvatarFileId(userId)
+      if (fileId) {
+        const bridgeStore = useBridgeStore()
+        bridgeStore.sendEvent('entity:avatar:prime-cache', { userId: key, fileId })
+      }
       return
+    }
   }
   catch {
     /* ignore */
