@@ -106,7 +106,7 @@ export function useEnsureChatAvatar(chatId: MaybeRef<string | number | undefined
         const fileId = avatarStore.getChatAvatarFileId(cid)
         if (fileId) {
           const bridgeStore = useBridgeStore()
-          bridgeStore.sendEvent('entity:chat-avatar:prime-cache' as any, { chatId: String(cid), fileId })
+          bridgeStore.sendEvent('entity:chat-avatar:prime-cache', { chatId: String(cid), fileId })
         }
       }
     }
@@ -164,7 +164,7 @@ export async function ensureUserAvatarImmediate(userId: string | number | undefi
 
   // If prefill failed, a final check on the store before network fetch as a safeguard.
   if (!avatarStore.getUserAvatarUrl(userId))
-    avatarStore.ensureUserAvatar(String(userId))
+    avatarStore.ensureUserAvatar(String(userId), avatarStore.getUserAvatarFileId(userId))
 }
 
 /**

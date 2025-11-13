@@ -54,7 +54,10 @@ function useUserDropdownAvatar() {
   function loadAvatar() {
     if (!userId.value)
       return
-    prefillUserAvatarIntoStore(userId.value).finally(() => avatarStore.ensureUserAvatar(userId.value))
+    prefillUserAvatarIntoStore(userId.value).finally(() => {
+      const fid = avatarStore.getUserAvatarFileId(userId.value)
+      avatarStore.ensureUserAvatar(userId.value, fid)
+    })
   }
 
   // Fetch avatar only when dropdown toggles open to avoid duplicate work

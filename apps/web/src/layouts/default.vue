@@ -148,13 +148,18 @@ function useCurrentUserAvatar() {
   onMounted(() => {
     if (meId.value) {
       // Prefill from disk cache to speed up first paint
-      prefillUserAvatarIntoStore(meId.value).finally(() => avatarStore.ensureUserAvatar(meId.value))
+      prefillUserAvatarIntoStore(meId.value).finally(() => {
+        const fid = avatarStore.getUserAvatarFileId(meId.value)
+        avatarStore.ensureUserAvatar(meId.value, fid)
+      })
     }
   })
 
   watch(() => websocketStore.getActiveSession()?.isConnected, (connected) => {
-    if (connected && meId.value)
-      avatarStore.ensureUserAvatar(meId.value)
+    if (connected && meId.value) {
+      const fid = avatarStore.getUserAvatarFileId(meId.value)
+      avatarStore.ensureUserAvatar(meId.value, fid)
+    }
   })
 
   return { userAvatarSrc }

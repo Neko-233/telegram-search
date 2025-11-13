@@ -149,7 +149,11 @@ function createAvatarHelper(ctx: CoreContext) {
    */
   async function fetchUserAvatar(userId: string, expectedFileId?: string): Promise<void> {
     try {
-      const key = String(Number(userId) || userId)
+      const key = toKey(userId)
+      if (!key) {
+        logger.withFields({ userId }).verbose('Invalid userId; skip fetch')
+        return
+      }
       // Negative cache early exit: skip repeated requests for users without avatars
       if (noUserAvatarCache.get(key)) {
         logger.withFields({ userId: key }).verbose('User has no avatar (sentinel); skip fetch')
@@ -215,7 +219,11 @@ function createAvatarHelper(ctx: CoreContext) {
       logger.withError(error as Error).warn('Failed to fetch avatar for user')
     }
     finally {
-      inflightUsers.delete(String(Number(userId) || userId))
+      const key = toKey(userId)
+      if (key)
+        inflightUsers.delete(key)
+      else
+        logger.withFields({ userId }).verbose('Invalid userId in finally block')
     }
   }
 
@@ -357,7 +365,11 @@ function createAvatarHelper(ctx: CoreContext) {
     dialogEntityCache,
     // Prime the LRU cache with fileId information (without avatar bytes)
     primeUserAvatarCache: (userId: string, fileId: string) => {
-      const key = String(Number(userId) || userId)
+      const key = toKey(userId)
+      if (!key) {
+        logger.withFields({ userId }).verbose('Invalid userId for priming; skip')
+        return
+      }
       // Only prime if we don't already have cached bytes
       const existing = userAvatarCache.get(key)
       if (!existing || !existing.byte) {

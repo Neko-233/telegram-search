@@ -322,7 +322,6 @@ export const useAvatarStore = defineStore('avatar', () => {
     markUserFetchCompleted,
     markChatFetchCompleted,
     cleanupExpired,
-    // 新增：获取 chat avatar fileId 用于预热核心层
     getChatAvatarFileId,
   }
 })
