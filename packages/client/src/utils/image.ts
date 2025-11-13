@@ -1,14 +1,23 @@
 /**
  * Convert raw bytes and mime type to a Blob.
  * Designed for browser environments where avatar images arrive as Uint8Array.
+ * Use precise ArrayBuffer slicing to avoid entire block copying and reduce memory usage.
  */
 export function bytesToBlob(byte: Uint8Array, mimeType: string): Blob {
-  // Ensure BlobPart is an ArrayBuffer (not ArrayBufferLike) to satisfy TS types.
-  // Copy into a fresh ArrayBuffer to avoid offset/length issues.
-  const buf = new ArrayBuffer(byte.byteLength)
-  const view = new Uint8Array(buf)
-  view.set(byte)
-  return new Blob([buf], { type: mimeType })
+  // Use byte.buffer.slice to get a precise ArrayBuffer slice, avoiding copying the entire underlying buffer
+  // This allows sharing the memory of the original ArrayBuffer, reducing memory usage
+  const preciseBuffer = byte.buffer.slice(byte.byteOffset, byte.byteOffset + byte.byteLength)
+  // Ensure the returned Buffer is ArrayBuffer rather than SharedArrayBuffer, as Blob constructor requires ArrayBuffer
+  if (preciseBuffer instanceof ArrayBuffer) {
+    return new Blob([preciseBuffer], { type: mimeType })
+  }
+  else {
+    // If it is a SharedArrayBuffer, create a new copy of the ArrayBuffer.
+    const buffer = new ArrayBuffer(byte.byteLength)
+    const view = new Uint8Array(buffer)
+    view.set(byte)
+    return new Blob([buffer], { type: mimeType })
+  }
 }
 
 export interface OptimizeOptions {

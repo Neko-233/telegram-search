@@ -40,8 +40,9 @@ export function registerDialogEventHandlers(
     // Reconstruct buffer from JSON-safe payload
     let buffer: Uint8Array | undefined
     try {
-      if ((data.byte as any)?.data?.length)
-        buffer = new Uint8Array((data.byte as any).data)
+      // Type guard to check if byte is an object with data property
+      if (typeof data.byte === 'object' && 'data' in data.byte && Array.isArray(data.byte.data))
+        buffer = new Uint8Array(data.byte.data)
       else buffer = data.byte as Uint8Array
     }
     catch (error) {
@@ -60,6 +61,8 @@ export function registerDialogEventHandlers(
     if (!decodable) {
       // Signal completion to clear in-flight flag for this chat
       useAvatarStore().markChatFetchCompleted(data.chatId)
+      // Clean up ArrayBuffer references to help the GC reclaim memory
+      buffer = undefined
       return
     }
     // Convert bytes to Blob and create blob URL
@@ -68,7 +71,7 @@ export function registerDialogEventHandlers(
 
     // Persist optimized chat avatar
     try {
-      await persistChatAvatar(data.chatId, blob, data.mimeType)
+      await persistChatAvatar(data.chatId, blob, data.mimeType, data.fileId)
     }
     catch (error) {
       // Warn-only logging to comply with lint rules
@@ -89,6 +92,9 @@ export function registerDialogEventHandlers(
 
     // Signal completion to clear in-flight flag for this chat
     avatarStore.markChatFetchCompleted(data.chatId)
+
+    // Clean up ArrayBuffer references to help the GC reclaim memory
+    buffer = undefined
 
     console.warn('[Avatar] Updated chat avatar', { chatId: data.chatId, fileId: data.fileId })
   })

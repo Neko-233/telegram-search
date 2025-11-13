@@ -5,10 +5,10 @@
  * periodic cleanup and monitoring stats.
  */
 
-// DB config
+// DB configuration
 const AVATAR_DB_NAME = 'tg-avatar-cache'
 const AVATAR_STORE = 'records'
-const DB_VERSION = 3 // 升级到版本3，添加fileId字段支持
+const DB_VERSION = 3 // Upgrade to version 3, add support for the fileId field
 
 // Policy config
 const DEFAULT_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
@@ -158,6 +158,7 @@ export async function persistChatAvatar(chatId: string | number, blob: Blob, mim
  * Load latest valid user avatar from cache and return an object URL, mimeType and fileId.
  * Returns undefined if not found or expired.
  * Note: For backwards compatibility, old records without fileId will still be loaded but fileId will be undefined.
+ * Optimization: Add memory cleaning to ensure that original blob references are released and prevent memory leaks.
  */
 export async function loadUserAvatarFromCache(userId: string | number | undefined): Promise<{ url: string, mimeType: string, fileId?: string } | undefined> {
   if (!userId)
@@ -189,7 +190,13 @@ export async function loadUserAvatarFromCache(userId: string | number | undefine
   }
   try {
     const url = URL.createObjectURL(latest.blob)
-    return { url, mimeType: latest.mimeType, fileId: latest.fileId }
+    const result = { url, mimeType: latest.mimeType, fileId: latest.fileId }
+
+    // 🗑️ 关键优化：清理对原始blob的引用，让GC可以回收ArrayBuffer内存
+    latest.blob = null as any
+    latest = undefined as any
+
+    return result
   }
   catch (err) {
     console.warn('[AvatarCache] objectURL failed', err)
@@ -199,6 +206,7 @@ export async function loadUserAvatarFromCache(userId: string | number | undefine
 
 /**
  * Load latest valid chat avatar by primary key and return an object URL + mimeType + fileId.
+ * Optimization: Add memory cleaning to ensure that original blob references are released and prevent memory leaks.
  */
 export async function loadChatAvatarFromCache(chatId: string | number | undefined): Promise<{ url: string, mimeType: string, fileId?: string } | undefined> {
   if (!chatId)
@@ -230,7 +238,13 @@ export async function loadChatAvatarFromCache(chatId: string | number | undefine
   }
   try {
     const url = URL.createObjectURL(latest.blob)
-    return { url, mimeType: latest.mimeType, fileId: latest.fileId }
+    const result = { url, mimeType: latest.mimeType, fileId: latest.fileId }
+
+    // 🗑️ 关键优化：清理对原始blob的引用，让GC可以回收ArrayBuffer内存
+    latest.blob = null as any
+    latest = undefined as any
+
+    return result
   }
   catch (err) {
     console.warn('[AvatarCache] objectURL failed', err)

@@ -43,6 +43,8 @@ export function registerEntityEventHandlers(
     if (!decodable) {
       // Clear in-flight flag even if image is not decodable
       avatarStore.markUserFetchCompleted(data.userId)
+      // Clean up ArrayBuffer references to help the GC reclaim memory
+      buffer = undefined
       return
     }
     // Convert bytes to Blob directly (optimization step removed)
@@ -62,6 +64,9 @@ export function registerEntityEventHandlers(
 
     // Clear in-flight flag after successful update
     avatarStore.markUserFetchCompleted(data.userId)
+
+    // Clean up ArrayBuffer references to help the GC reclaim memory
+    buffer = undefined
 
     // console.warn('[Avatar] Updated user avatar', { userId: data.userId, fileId: data.fileId })
   })
