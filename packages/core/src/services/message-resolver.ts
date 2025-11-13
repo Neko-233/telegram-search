@@ -36,7 +36,13 @@ export function createMessageResolverService(ctx: CoreContext) {
       // Storage the messages first
       emitter.emit('storage:record:messages', { messages: coreMessages })
 
-      const disabledResolvers = useConfig().resolvers.disabledResolvers || []
+      let disabledResolvers = useConfig().resolvers.disabledResolvers || []
+      if (options.takeout) {
+        const extra = ['avatar']
+        const set = new Set(disabledResolvers)
+        for (const name of extra) set.add(name)
+        disabledResolvers = Array.from(set)
+      }
 
       // Embedding or resolve messages
       const promises = Array.from(resolvers.registry.entries())
