@@ -6,11 +6,13 @@ interface Props {
   name?: string
   size?: 'sm' | 'md' | 'lg'
   isOnline?: boolean
+  eager?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   size: 'md',
   isOnline: false,
+  eager: false,
 })
 
 const sizeMap = {
@@ -67,7 +69,7 @@ const backgroundColor = computed(() => {
         v-if="src"
         :src="src"
         :alt="name"
-        loading="lazy"
+        :loading="eager ? 'eager' : 'lazy'"
         decoding="async"
         class="h-full w-full object-cover"
       >

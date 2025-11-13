@@ -145,20 +145,30 @@ function useCurrentUserAvatar() {
   const meId = computed(() => websocketStore.getActiveSession()?.me?.id)
   const userAvatarSrc = computed(() => avatarStore.getUserAvatarUrl(meId.value))
 
+  // Prefetch image as soon as URL is available to shorten 'self avatar' paint delay
+  watch(userAvatarSrc, (url) => {
+    if (url) {
+      const link = document.createElement('link')
+      link.rel = 'prefetch'
+      link.href = url
+      document.head.appendChild(link)
+    }
+  }, { immediate: true })
+
   onMounted(() => {
     if (meId.value) {
       // Prefill from disk cache to speed up first paint
       prefillUserAvatarIntoStore(meId.value).finally(() => {
-        const fid = avatarStore.getUserAvatarFileId(meId.value)
-        avatarStore.ensureUserAvatar(meId.value, fid)
+        // Force refresh to always get the latest avatar on initial mount
+        avatarStore.ensureUserAvatar(meId.value, undefined, true)
       })
     }
   })
 
   watch(() => websocketStore.getActiveSession()?.isConnected, (connected) => {
     if (connected && meId.value) {
-      const fid = avatarStore.getUserAvatarFileId(meId.value)
-      avatarStore.ensureUserAvatar(meId.value, fid)
+      // Force refresh to always get the latest avatar on reconnect
+      avatarStore.ensureUserAvatar(meId.value, undefined, true)
     }
   })
 
@@ -364,6 +374,7 @@ watch(activeGroupChats, (list) => {
                 :src="userAvatarSrc"
                 :name="websocketStore.getActiveSession()?.me?.name"
                 size="sm"
+                eager
               />
             </div>
             <div class="min-w-0 flex flex-1 flex-col">

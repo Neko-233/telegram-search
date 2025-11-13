@@ -192,18 +192,20 @@ export const useAvatarStore = defineStore('avatar', () => {
    * Otherwise, mark in-flight and send 'entity:avatar:fetch'.
    * Optional fileId allows core to validate cache before fetching.
    */
-  function ensureUserAvatar(userId: string | number | undefined, fileId?: string) {
-    if (!userId) {
+  function ensureUserAvatar(userId: string | number | undefined, fileId?: string, forceRefresh?: boolean) {
+    if (!userId)
       return
-    }
+
     const key = String(userId)
-    const existing = userAvatars.value.get(key)
-    if (existing && (!existing.expiresAt || Date.now() < existing.expiresAt)) {
-      return
+
+    if (!forceRefresh) {
+      const existing = userAvatars.value.get(key)
+      if (existing && (!existing.expiresAt || Date.now() < existing.expiresAt))
+        return
+      if (inflightUserFetchIds.value.has(key))
+        return
     }
-    if (inflightUserFetchIds.value.has(key)) {
-      return
-    }
+
     try {
       inflightUserFetchIds.value.add(key)
       websocketStore.sendEvent('entity:avatar:fetch', { userId: key, fileId })
