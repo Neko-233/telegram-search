@@ -220,15 +220,9 @@ function createAvatarHelper(ctx: CoreContext) {
       if (expectedFileId) {
         const cached = userAvatarCache.get(key)
         logger.withFields({ userId: key, expectedFileId, cachedFileId: cached?.fileId }).verbose('User avatar early cache validation')
-        if (cached && cached.fileId === expectedFileId) {
-          logger.withFields({ userId: key, fileId: expectedFileId }).verbose('User avatar cache hit with expected fileId - SKIPPING DOWNLOAD')
-          if (cached.byte && cached.mimeType) {
-            emitter.emit('entity:avatar:data', { userId: key, byte: cached.byte, mimeType: cached.mimeType, fileId: expectedFileId })
-          }
+        if (cached && cached.fileId === expectedFileId && cached.byte && cached.mimeType) {
+          emitter.emit('entity:avatar:data', { userId: key, byte: cached.byte, mimeType: cached.mimeType, fileId: expectedFileId })
           return
-        }
-        else {
-          logger.withFields({ userId: key, expectedFileId, cachedFileId: cached?.fileId, match: cached?.fileId === expectedFileId }).verbose('User avatar early cache validation FAILED - will download')
         }
       }
       else {
@@ -240,15 +234,9 @@ function createAvatarHelper(ctx: CoreContext) {
       logger.withFields({ userId: key, resolvedFileId: fileId }).verbose('Resolved fileId from entity')
 
       const cached = userAvatarCache.get(key)
-      if (cached) {
-        // Hit when fileId matches OR we previously cached bytes without a fileId
-        if ((fileId && cached.fileId === fileId) || (!fileId && cached.byte && cached.mimeType)) {
-          logger.withFields({ userId: key }).verbose('User avatar cache hit')
-          if (cached.byte && cached.mimeType) {
-            emitter.emit('entity:avatar:data', { userId: key, byte: cached.byte, mimeType: cached.mimeType, fileId })
-          }
-          return
-        }
+      if (cached && cached.byte && cached.mimeType && ((fileId && cached.fileId === fileId) || !fileId)) {
+        emitter.emit('entity:avatar:data', { userId: key, byte: cached.byte, mimeType: cached.mimeType, fileId })
+        return
       }
 
       const result = entity ? await getAvatarBytes(fileId, () => downloadSmallAvatar(entity)) : undefined
@@ -327,12 +315,9 @@ function createAvatarHelper(ctx: CoreContext) {
 
       const fileId = resolveAvatarFileId(entity)
       const cached = chatAvatarCache.get(key)
-      if (cached && ((fileId && cached.fileId === fileId) || (!fileId && cached.byte && cached.mimeType))) {
-        logger.withFields({ chatId }).verbose('Single avatar cache hit; emit cached bytes')
-        if (cached.byte && cached.mimeType) {
-          const idNumCached = typeof chatId === 'string' ? Number(chatId) : chatId
-          emitter.emit('dialog:avatar:data', { chatId: idNumCached, byte: cached.byte, mimeType: cached.mimeType, fileId })
-        }
+      if (cached && cached.byte && cached.mimeType && ((fileId && cached.fileId === fileId) || !fileId)) {
+        const idNumCached = typeof chatId === 'string' ? Number(chatId) : chatId
+        emitter.emit('dialog:avatar:data', { chatId: idNumCached, byte: cached.byte, mimeType: cached.mimeType, fileId })
         return
       }
 
@@ -406,11 +391,8 @@ function createAvatarHelper(ctx: CoreContext) {
 
         const fileId = resolveAvatarFileId(dialog.entity as Api.User | Api.Chat | Api.Channel)
         const cached = chatAvatarCache.get(key)
-        // If cache exists and fileId unchanged OR we have bytes cached without fileId, skip network.
-        if (cached && ((fileId && cached.fileId === fileId) || (!fileId && cached.byte && cached.mimeType))) {
-          logger.withFields({ chatId: id }).verbose('Avatar cache hit; skip emit')
+        if (cached && cached.byte && cached.mimeType && ((fileId && cached.fileId === fileId) || !fileId))
           return
-        }
 
         // Delegates concurrency via global downloadQueue, with fileId-level dedup
         const result = await getAvatarBytes(fileId, () => downloadSmallAvatar(dialog.entity as Api.User | Api.Chat | Api.Channel))

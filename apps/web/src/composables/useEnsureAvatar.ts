@@ -35,7 +35,9 @@ async function ensureUserAvatarCore(userIdRaw: string | number | undefined): Pro
       return
     }
   }
-  catch {}
+  catch (error) {
+    console.warn('[useEnsureAvatar] Prefill user avatar failed', error)
+  }
   finally {
     avatarStore.inflightUserPrefillIds.delete(key)
   }
@@ -79,7 +81,9 @@ async function ensureChatAvatarCore(chatIdRaw: string | number | undefined, file
       }
     }
   }
-  catch {}
+  catch (error) {
+    console.warn('[useEnsureAvatar] Prefill chat avatar failed', error)
+  }
   if (!avatarStore.hasValidChatAvatar(String(cid), fid))
     avatarStore.ensureChatAvatar(String(cid), fid)
 }
