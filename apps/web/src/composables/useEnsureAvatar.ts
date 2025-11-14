@@ -15,60 +15,38 @@ type MaybeRef<T> = T | Ref<T> | ComputedRef<T>
 export function useEnsureUserAvatar(userId: MaybeRef<string | number | undefined>): void {
   const avatarStore = useAvatarStore()
 
-  async function ensure() {
-    const id = unref(userId)
+  async function _ensureUserAvatar(userIdRaw: string | number | undefined): Promise<void> {
+    const id = userIdRaw
     if (!id)
       return
     const key = String(id)
-
-    // 1. Check in-memory cache first
     const url = avatarStore.getUserAvatarUrl(id)
-    if (url) {
+    if (url)
       return
-    }
-
-    // 2. Check if a prefill is already in-flight for this userId
-    if (avatarStore.inflightUserPrefillIds.has(key)) {
+    if (avatarStore.inflightUserPrefillIds.has(key))
       return
-    }
-
-    // 3. Mark this userId as being prefilled to prevent duplicate work
     avatarStore.inflightUserPrefillIds.add(key)
-
-    let prefillFileId: string | undefined
     try {
-      // Attempt to prefill from IndexedDB.
       const prefillSuccess = await prefillUserAvatarIntoStore(key)
-
-      // If prefill succeeded, get the fileId for core layer cache priming
       if (prefillSuccess) {
-        prefillFileId = avatarStore.getUserAvatarFileId(id)
+        const fileId = avatarStore.getUserAvatarFileId(id)
+        if (fileId) {
+          const bridgeStore = useBridgeStore()
+          bridgeStore.sendEvent('entity:avatar:prime-cache', { userId: key, fileId })
+        }
+        return
       }
     }
-    catch {
-      /* ignore prefill error and continue */
-    }
+    catch {}
     finally {
-      // 4. Always remove the prefill lock when done, whether it succeeded or failed
       avatarStore.inflightUserPrefillIds.delete(key)
     }
+    if (!avatarStore.getUserAvatarUrl(id))
+      avatarStore.ensureUserAvatar(String(id), avatarStore.getUserAvatarFileId(id))
+  }
 
-    // If prefill failed, a final check on the store before network fetch as a safeguard.
-    const finalUrl = avatarStore.getUserAvatarUrl(id)
-    if (!finalUrl) {
-      // Get fileId if available for core layer cache validation
-      const fileId = avatarStore.getUserAvatarFileId(id)
-      avatarStore.ensureUserAvatar(String(id), fileId)
-    }
-    else {
-      const fileId = prefillFileId || avatarStore.getUserAvatarFileId(id)
-
-      // If prefill succeeded, use the front-end data to preheat the core layer's LRU cache.
-      if (fileId) {
-        const bridgeStore = useBridgeStore()
-        bridgeStore.sendEvent('entity:avatar:prime-cache', { userId: key, fileId })
-      }
-    }
+  async function ensure() {
+    await _ensureUserAvatar(unref(userId))
   }
 
   onMounted(ensure)
@@ -85,38 +63,33 @@ export function useEnsureUserAvatar(userId: MaybeRef<string | number | undefined
 export function useEnsureChatAvatar(chatId: MaybeRef<string | number | undefined>, fileId?: MaybeRef<string | number | undefined>): void {
   const avatarStore = useAvatarStore()
 
-  async function ensure() {
-    const cid = unref(chatId)
-    const fidRaw = unref(fileId)
-    const fid = fidRaw != null ? String(fidRaw) : undefined
+  async function _ensureChatAvatar(chatIdRaw: string | number | undefined, fileIdRaw?: string | number | undefined): Promise<void> {
+    const cid = chatIdRaw
+    const fid = fileIdRaw != null ? String(fileIdRaw) : undefined
     if (!cid)
       return
     const valid = avatarStore.hasValidChatAvatar(String(cid), fid)
     if (valid)
       return
     try {
-      // Attempt to prefill from IndexedDB.
       const prefillSuccess = await prefillChatAvatarIntoStore(String(cid))
-      // After prefilling, if the avatar is now valid (correct fileId), we can stop.
       if (avatarStore.hasValidChatAvatar(String(cid), fid))
         return
-
-      // If prefill succeeded, use the front-end data to preheat the core layer's LRU cache.
       if (prefillSuccess) {
-        const fileId = avatarStore.getChatAvatarFileId(cid)
-        if (fileId) {
+        const fileId2 = avatarStore.getChatAvatarFileId(cid)
+        if (fileId2) {
           const bridgeStore = useBridgeStore()
-          bridgeStore.sendEvent('entity:chat-avatar:prime-cache', { chatId: String(cid), fileId })
+          bridgeStore.sendEvent('entity:chat-avatar:prime-cache', { chatId: String(cid), fileId: fileId2 })
         }
       }
     }
-    catch {
-      /* ignore prefill error and continue */
-    }
-
-    // If prefill failed or the loaded avatar was outdated, trigger network fetch.
+    catch {}
     if (!avatarStore.hasValidChatAvatar(String(cid), fid))
       avatarStore.ensureChatAvatar(String(cid), fid)
+  }
+
+  async function ensure() {
+    await _ensureChatAvatar(unref(chatId), unref(fileId))
   }
 
   onMounted(ensure)
@@ -129,42 +102,35 @@ export function useEnsureChatAvatar(chatId: MaybeRef<string | number | undefined
  */
 export async function ensureUserAvatarImmediate(userId: string | number | undefined): Promise<void> {
   const avatarStore = useAvatarStore()
-  if (!userId)
-    return
-  const key = String(userId)
-  // 1. Check in-memory cache first
-  const url = avatarStore.getUserAvatarUrl(userId)
-  if (url)
-    return
-  // 2. Check if a prefill is already in-flight for this userId
-  if (avatarStore.inflightUserPrefillIds.has(key))
-    return
-  // 3. Mark this userId as being prefilled to prevent duplicate work
-  avatarStore.inflightUserPrefillIds.add(key)
-
-  try {
-    // Attempt to prefill from IndexedDB. If successful, prime core cache and return.
-    const prefillSuccess = await prefillUserAvatarIntoStore(key)
-    if (prefillSuccess) {
-      const fileId = avatarStore.getUserAvatarFileId(userId)
-      if (fileId) {
-        const bridgeStore = useBridgeStore()
-        bridgeStore.sendEvent('entity:avatar:prime-cache', { userId: key, fileId })
-      }
+  await (async () => {
+    const id = userId
+    if (!id)
       return
+    const key = String(id)
+    const url = avatarStore.getUserAvatarUrl(id)
+    if (url)
+      return
+    if (avatarStore.inflightUserPrefillIds.has(key))
+      return
+    avatarStore.inflightUserPrefillIds.add(key)
+    try {
+      const prefillSuccess = await prefillUserAvatarIntoStore(key)
+      if (prefillSuccess) {
+        const fileId = avatarStore.getUserAvatarFileId(id)
+        if (fileId) {
+          const bridgeStore = useBridgeStore()
+          bridgeStore.sendEvent('entity:avatar:prime-cache', { userId: key, fileId })
+        }
+        return
+      }
     }
-  }
-  catch {
-    /* ignore */
-  }
-  finally {
-    // 4. Always remove the prefill lock when done, whether it succeeded or failed
-    avatarStore.inflightUserPrefillIds.delete(key)
-  }
-
-  // If prefill failed, a final check on the store before network fetch as a safeguard.
-  if (!avatarStore.getUserAvatarUrl(userId))
-    avatarStore.ensureUserAvatar(String(userId), avatarStore.getUserAvatarFileId(userId))
+    catch {}
+    finally {
+      avatarStore.inflightUserPrefillIds.delete(key)
+    }
+    if (!avatarStore.getUserAvatarUrl(id))
+      avatarStore.ensureUserAvatar(String(id), avatarStore.getUserAvatarFileId(id))
+  })()
 }
 
 /**
@@ -173,24 +139,21 @@ export async function ensureUserAvatarImmediate(userId: string | number | undefi
  */
 export async function ensureChatAvatarImmediate(chatId: string | number | undefined, fileId?: string | number | undefined): Promise<void> {
   const avatarStore = useAvatarStore()
-  if (!chatId)
-    return
-  const fid = fileId != null ? String(fileId) : undefined
-  const valid = avatarStore.hasValidChatAvatar(String(chatId), fid)
-  if (valid)
-    return
-  try {
-    // Attempt to prefill from IndexedDB.
-    await prefillChatAvatarIntoStore(String(chatId))
-    // After prefilling, if the avatar is now valid (correct fileId), we can stop.
-    if (avatarStore.hasValidChatAvatar(String(chatId), fid))
+  await (async () => {
+    const cid = chatId
+    const fid2 = fileId != null ? String(fileId) : undefined
+    if (!cid)
       return
-  }
-  catch {
-    /* ignore */
-  }
-
-  // If prefill failed or the loaded avatar was outdated, trigger network fetch.
-  if (!avatarStore.hasValidChatAvatar(String(chatId), fid))
-    avatarStore.ensureChatAvatar(String(chatId), fid)
+    const valid = avatarStore.hasValidChatAvatar(String(cid), fid2)
+    if (valid)
+      return
+    try {
+      await prefillChatAvatarIntoStore(String(cid))
+      if (avatarStore.hasValidChatAvatar(String(cid), fid2))
+        return
+    }
+    catch {}
+    if (!avatarStore.hasValidChatAvatar(String(cid), fid2))
+      avatarStore.ensureChatAvatar(String(cid), fid2)
+  })()
 }

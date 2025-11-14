@@ -23,11 +23,12 @@ const src = computed(() => avatarStore.getUserAvatarUrl(props.userId))
 
 // Ensure latest self avatar on mount and reconnect
 onMounted(() => {
-  avatarStore.ensureUserAvatar(String(props.userId), undefined, props.forceRefresh)
+  if (props.userId)
+    avatarStore.ensureUserAvatar(String(props.userId), undefined, props.forceRefresh)
 })
 
 watch(() => bridgeStore.getActiveSession()?.isConnected, (connected) => {
-  if (connected)
+  if (connected && props.userId)
     avatarStore.ensureUserAvatar(String(props.userId), undefined, props.forceRefresh)
 })
 </script>
