@@ -252,9 +252,10 @@ watch(
     <div class="flex items-center justify-between border-b bg-card/50 px-6 py-4 backdrop-blur-sm">
       <div class="flex items-center gap-3">
         <ChatAvatar
-          :id="currentChat?.id as any"
+          v-if="currentChat && currentChat.id != null"
+          :id="currentChat.id"
           entity-type="chat"
-          :file-id="currentChat?.avatarFileId as any"
+          :file-id="currentChat?.avatarFileId"
           :name="currentChat?.name"
           size="md"
         />

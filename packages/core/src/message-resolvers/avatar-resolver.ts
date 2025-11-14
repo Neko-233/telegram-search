@@ -438,37 +438,37 @@ function createAvatarHelper(ctx: CoreContext) {
     await Promise.allSettled(tasks)
   }
 
+  function primeUserAvatarCacheCore(userId: string, fileId: string) {
+    const key = toKey(userId)
+    if (!key) {
+      logger.withFields({ userId }).verbose('Invalid userId for priming; skip')
+      return
+    }
+    const existing = userAvatarCache.get(key)
+    if (!existing || !existing.byte) {
+      logger.withFields({ userId: key, fileId }).verbose('Priming user avatar cache with fileId')
+      userAvatarCache.set(key, { fileId, mimeType: '', byte: undefined })
+    }
+  }
+
+  function primeChatAvatarCacheCore(chatId: string, fileId: string) {
+    const key = toKey(chatId)
+    if (!key)
+      return
+    const existing = chatAvatarCache.get(key)
+    if (!existing || !existing.byte) {
+      logger.withFields({ chatId: key, fileId }).verbose('Priming chat avatar cache with fileId')
+      chatAvatarCache.set(key, { fileId, mimeType: '', byte: undefined })
+    }
+  }
+
   return {
     fetchUserAvatar,
     fetchDialogAvatar,
     fetchDialogAvatars,
     dialogEntityCache,
-    // Prime the LRU cache with fileId information (without avatar bytes)
-    primeUserAvatarCache: (userId: string, fileId: string) => {
-      const key = toKey(userId)
-      if (!key) {
-        logger.withFields({ userId }).verbose('Invalid userId for priming; skip')
-        return
-      }
-      // Only prime if we don't already have cached bytes
-      const existing = userAvatarCache.get(key)
-      if (!existing || !existing.byte) {
-        logger.withFields({ userId: key, fileId }).verbose('Priming user avatar cache with fileId')
-        userAvatarCache.set(key, { fileId, mimeType: '', byte: undefined })
-      }
-    },
-    // Prime the LRU cache with chat avatar fileId information (without avatar bytes)
-    primeChatAvatarCache: (chatId: string, fileId: string) => {
-      const key = toKey(chatId)
-      if (!key)
-        return
-      // Only prime if we don't already have cached bytes
-      const existing = chatAvatarCache.get(key)
-      if (!existing || !existing.byte) {
-        logger.withFields({ chatId: key, fileId }).verbose('Priming chat avatar cache with fileId')
-        chatAvatarCache.set(key, { fileId, mimeType: '', byte: undefined })
-      }
-    },
+    primeUserAvatarCache: primeUserAvatarCacheCore,
+    primeChatAvatarCache: primeChatAvatarCacheCore,
     // Export cleanup method for external invocation
     clearCache: () => {
       userAvatarCache.clear()
@@ -491,30 +491,12 @@ function createAvatarHelper(ctx: CoreContext) {
       byteBudget,
     }),
     primeUserAvatarCacheBatch: (list: Array<{ userId: string, fileId: string }>) => {
-      for (const { userId, fileId } of list) {
-        // reuse single prime method
-        // Only prime if we don't already have cached bytes
-        ((): void => {
-          const key = toKey(userId)
-          if (!key)
-            return
-          const existing = userAvatarCache.get(key)
-          if (!existing || !existing.byte)
-            userAvatarCache.set(key, { fileId, mimeType: '', byte: undefined })
-        })()
-      }
+      for (const { userId, fileId } of list)
+        primeUserAvatarCacheCore(userId, fileId)
     },
     primeChatAvatarCacheBatch: (list: Array<{ chatId: string, fileId: string }>) => {
-      for (const { chatId, fileId } of list) {
-        ((): void => {
-          const key = toKey(chatId)
-          if (!key)
-            return
-          const existing = chatAvatarCache.get(key)
-          if (!existing || !existing.byte)
-            chatAvatarCache.set(key, { fileId, mimeType: '', byte: undefined })
-        })()
-      }
+      for (const { chatId, fileId } of list)
+        primeChatAvatarCacheCore(chatId, fileId)
     },
   }
 }

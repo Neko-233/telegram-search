@@ -46,7 +46,8 @@ const userId = computed(() => activeSessionComputed.value?.me?.id)
   >
     <div class="flex items-center gap-3 border-b p-3 dark:border-gray-600">
       <SelfAvatar
-        :user-id="userId as any"
+        v-if="userId != null"
+        :user-id="userId"
         :name="username"
         size="md"
       />

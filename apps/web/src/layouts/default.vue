@@ -330,7 +330,8 @@ watch(activeGroupChats, (list) => {
           >
             <div class="h-8 w-8 flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
               <SelfAvatar
-                :user-id="websocketStore.getActiveSession()?.me?.id as any"
+                v-if="websocketStore.getActiveSession()?.me?.id != null"
+                :user-id="websocketStore.getActiveSession()?.me?.id!"
                 :name="websocketStore.getActiveSession()?.me?.name"
                 size="sm"
               />
