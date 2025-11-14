@@ -1,12 +1,12 @@
 <script lang="ts" setup>
-import { prefillUserAvatarIntoStore, useAuthStore, useAvatarStore } from '@tg-search/client'
+import { useAuthStore } from '@tg-search/client'
 import { onClickOutside } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
-import { computed, useTemplateRef, watchEffect } from 'vue'
+import { computed, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
-import Avatar from '../ui/Avatar.vue'
+import SelfAvatar from '../avatar/SelfAvatar.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -36,40 +36,6 @@ function handleLoginLogout() {
 
 const username = computed(() => activeSessionComputed.value?.me?.username)
 const userId = computed(() => activeSessionComputed.value?.me?.id)
-
-const avatarStore = useAvatarStore()
-
-/**
- * Setup user dropdown avatar state and lazy fetch.
- * - Computes avatar URL from centralized avatar store by `userId`.
- * - Ensures avatar is fetched when dropdown opens or component mounts.
- */
-function useUserDropdownAvatar() {
-  const userAvatarSrc = computed(() => avatarStore.getUserAvatarUrl(userId.value))
-
-  /**
-   * Load avatar for current `userId`: prefill from cache, then ensure network fetch.
-   * Using `finally` guarantees `ensureUserAvatar` runs even if prefill fails.
-   */
-  function loadAvatar() {
-    if (!userId.value)
-      return
-    prefillUserAvatarIntoStore(userId.value).finally(() => {
-      const fid = avatarStore.getUserAvatarFileId(userId.value)
-      avatarStore.ensureUserAvatar(userId.value, fid)
-    })
-  }
-
-  // Fetch avatar only when dropdown toggles open to avoid duplicate work
-  watchEffect(() => {
-    if (isOpen.value && userId.value)
-      loadAvatar()
-  })
-
-  return { userAvatarSrc }
-}
-
-const { userAvatarSrc } = useUserDropdownAvatar()
 </script>
 
 <template>
@@ -79,8 +45,8 @@ const { userAvatarSrc } = useUserDropdownAvatar()
     class="absolute left-0 top-full z-10 mt-2 min-w-[200px] border border-border rounded-md bg-popover p-2 shadow-lg dark:border-gray-600 dark:bg-gray-800"
   >
     <div class="flex items-center gap-3 border-b p-3 dark:border-gray-600">
-      <Avatar
-        :src="userAvatarSrc"
+      <SelfAvatar
+        :user-id="userId as any"
         :name="username"
         size="md"
       />

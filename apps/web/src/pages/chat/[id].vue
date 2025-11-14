@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CoreDialog, CoreMessage } from '@tg-search/core/types'
 
-import { useAvatarStore, useBridgeStore, useChatStore, useMessageStore, useSettingsStore } from '@tg-search/client'
+import { useBridgeStore, useChatStore, useMessageStore, useSettingsStore } from '@tg-search/client'
 import { useWindowSize } from '@vueuse/core'
 import { storeToRefs } from 'pinia'
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
@@ -9,12 +9,11 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 
+import ChatAvatar from '../../components/avatar/ChatAvatar.vue'
 import SearchDialog from '../../components/SearchDialog.vue'
-import Avatar from '../../components/ui/Avatar.vue'
 import VirtualMessageList from '../../components/VirtualMessageList.vue'
 
 import { Button } from '../../components/ui/Button'
-import { useEnsureChatAvatar } from '../../composables/useEnsureAvatar'
 
 const { t } = useI18n()
 
@@ -51,33 +50,15 @@ const targetMessageParams = computed(() => ({
   messageUuid: route.query.messageUuid as string | undefined,
 }))
 
-const avatarStore = useAvatarStore()
+// Avatar store access is not needed; ChatAvatar handles ensure and rendering
 
 /**
  * Compute chat header avatar src via centralized avatar store.
  * Avoids typing issues by not reading transient fields on CoreDialog.
  */
-function useChatHeaderAvatar() {
-  const chatAvatarSrc = computed(() => avatarStore.getChatAvatarUrl(currentChat.value?.id))
-  return { chatAvatarSrc }
-}
+// Header avatar is rendered via ChatAvatar wrapper
 
-const { chatAvatarSrc } = useChatHeaderAvatar()
-
-/**
- * Ensure chat header avatar availability via composable.
- * - Watches `currentChat.id` and `currentChat.avatarFileId` reactively.
- * - Prefills from cache, then fetches via network if missing.
- */
-const chatIdRef = computed(() => currentChat.value?.id)
-const fileIdRef = computed(() => currentChat.value?.avatarFileId)
-useEnsureChatAvatar(chatIdRef, fileIdRef)
-
-/**
- * Avatar policy: remove batch priming to enforce visible-only fetching.
- * Message-level avatar fetching is handled by v-ensure-user-avatar directive
- * on each visible MessageBubble.
- */
+// Use ChatAvatar wrapper to handle ensure and rendering
 
 // Initial load when component mounts
 onMounted(async () => {
@@ -270,9 +251,10 @@ watch(
     <!-- Chat Header -->
     <div class="flex items-center justify-between border-b bg-card/50 px-6 py-4 backdrop-blur-sm">
       <div class="flex items-center gap-3">
-        <Avatar
-          class="h-10 w-10 flex items-center justify-center rounded-full bg-primary/10"
-          :src="chatAvatarSrc"
+        <ChatAvatar
+          :id="currentChat?.id as any"
+          entity-type="chat"
+          :file-id="currentChat?.avatarFileId as any"
           :name="currentChat?.name"
           size="md"
         />

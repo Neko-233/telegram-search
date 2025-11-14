@@ -1,17 +1,15 @@
 <script setup lang="ts">
 import type { CoreMessage } from '@tg-search/core/types'
 
-import { formatMessageTimestamp, useAvatarStore } from '@tg-search/client'
+import { formatMessageTimestamp } from '@tg-search/client'
 import { useClipboard } from '@vueuse/core'
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
-import Avatar from '../ui/Avatar.vue'
+import ChatAvatar from '../avatar/ChatAvatar.vue'
 import ContextMenu from '../ui/ContextMenu.vue'
-
-import { ensureUserAvatarImmediate } from '../../composables/useEnsureAvatar'
 
 const props = defineProps<{
   messages: CoreMessage[]
@@ -86,30 +84,9 @@ function handleLongPress(event: TouchEvent, message: CoreMessage) {
   contextMenuOpen.value = true
 }
 
-const avatarStore = useAvatarStore()
+// Rendering via ChatAvatar wrapper; ensure is handled internally
 
-/**
- * Get the current user's avatar URL for a message.
- * Cache-aware: reads from the centralized avatar store to leverage TTL and in-memory cache.
- * Rendering components depend on this URL; visibility-driven directive triggers fetching when needed.
- */
-function getUserAvatarUrl(userId: string | number | undefined): string | undefined {
-  if (!userId)
-    return undefined
-  return avatarStore.getUserAvatarUrl(userId)
-}
-
-/**
- * Ensure avatars for current list items when data changes.
- * Calls immediate helper without lifecycle hooks to avoid Vue warnings.
- */
-async function ensureAvatarsForMessages() {
-  const tasks = props.messages.map(m => ensureUserAvatarImmediate(m.fromId))
-  await Promise.all(tasks)
-}
-
-ensureAvatarsForMessages()
-watch(() => props.messages, ensureAvatarsForMessages)
+// Removed external ensure; wrapper triggers per visible item
 </script>
 
 <template>
@@ -127,8 +104,9 @@ watch(() => props.messages, ensureAvatarsForMessages)
       @touchstart.passive="handleLongPress($event, item)"
     >
       <div class="flex-shrink-0 pt-0.5">
-        <Avatar
-          :src="getUserAvatarUrl(item.fromId)"
+        <ChatAvatar
+          :id="item.fromId"
+          entity-type="user"
           :name="item.fromName"
           size="md"
         />

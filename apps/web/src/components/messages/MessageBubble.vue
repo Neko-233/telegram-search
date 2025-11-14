@@ -1,42 +1,24 @@
 <script setup lang="ts">
 import type { CoreMessage } from '@tg-search/core/types'
 
-import { formatMessageTimestamp, useAvatarStore } from '@tg-search/client'
-import { computed } from 'vue'
+import { formatMessageTimestamp } from '@tg-search/client'
 
-import Avatar from '../ui/Avatar.vue'
+import ChatAvatar from '../avatar/ChatAvatar.vue'
 import MediaRenderer from './media/MediaRenderer.vue'
 
-import { useEnsureUserAvatar } from '../../composables/useEnsureAvatar'
-
-const props = defineProps<{
+defineProps<{
   message: CoreMessage
 }>()
 
-const avatarStore = useAvatarStore()
-
-/**
- * Setup message avatar state.
- * - Computes current avatar URL from centralized avatar store.
- * - Network fetching is orchestrated at the chat page level to avoid duplicates.
- */
-function useMessageAvatar() {
-  const avatarSrc = computed(() => avatarStore.getUserAvatarUrl(props.message.fromId))
-
-  return { avatarSrc }
-}
-
-const { avatarSrc } = useMessageAvatar()
-
-// Ensure avatar on visible mount without using directives
-useEnsureUserAvatar(props.message.fromId)
+// Use ChatAvatar wrapper to handle ensure and rendering
 </script>
 
 <template>
   <div class="group mx-3 my-1 flex items-start gap-3 rounded-xl p-3 transition-all duration-200 md:mx-4 md:gap-4 hover:bg-accent/50">
     <div class="flex-shrink-0 pt-0.5">
-      <Avatar
-        :src="avatarSrc"
+      <ChatAvatar
+        :id="message.fromId"
+        entity-type="user"
         :name="message.fromName"
         size="md"
       />

@@ -4,20 +4,20 @@ import type { CoreDialog } from '@tg-search/core/types'
 
 import buildTime from '~build/time'
 
-import { prefillChatAvatarIntoStore, prefillUserAvatarIntoStore, useAvatarStore, useBridgeStore, useChatStore, useSettingsStore } from '@tg-search/client'
+import { prefillChatAvatarIntoStore, useBridgeStore, useChatStore, useSettingsStore } from '@tg-search/client'
 import { breakpointsTailwind, useBreakpoints, useDark } from '@vueuse/core'
 import { abbreviatedSha as gitShortSha } from '~build/git'
 import { version as pkgVersion } from '~build/package'
 import { storeToRefs } from 'pinia'
 import { VList } from 'virtua/vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 
-import EnsureChatAvatarOnMount from '../components/helpers/EnsureChatAvatarOnMount.vue'
+import ChatAvatar from '../components/avatar/ChatAvatar.vue'
+import SelfAvatar from '../components/avatar/SelfAvatar.vue'
 import LanguageSelector from '../components/layout/LanguageSelector.vue'
 import SidebarSelector from '../components/layout/SidebarSelector.vue'
-import Avatar from '../components/ui/Avatar.vue'
 
 import { Button } from '../components/ui/Button'
 
@@ -28,7 +28,6 @@ const isDark = useDark()
 const websocketStore = useBridgeStore()
 const route = useRoute()
 const router = useRouter()
-const avatarStore = useAvatarStore()
 
 const { t } = useI18n()
 
@@ -136,46 +135,7 @@ function handleAvatarClick() {
   }
 }
 
-/**
- * Setup current user's avatar state and lazy fetch.
- * - Computes avatar URL via `useAvatarStore` for active session user.
- * - Ensures avatar is fetched when layout mounts and when connection status changes.
- */
-function useCurrentUserAvatar() {
-  const meId = computed(() => websocketStore.getActiveSession()?.me?.id)
-  const userAvatarSrc = computed(() => avatarStore.getUserAvatarUrl(meId.value))
-
-  // Prefetch image as soon as URL is available to shorten 'self avatar' paint delay
-  watch(userAvatarSrc, (url) => {
-    if (url) {
-      const link = document.createElement('link')
-      link.rel = 'prefetch'
-      link.href = url
-      document.head.appendChild(link)
-    }
-  }, { immediate: true })
-
-  onMounted(() => {
-    if (meId.value) {
-      // Prefill from disk cache to speed up first paint
-      prefillUserAvatarIntoStore(meId.value).finally(() => {
-        // Force refresh to always get the latest avatar on initial mount
-        avatarStore.ensureUserAvatar(meId.value, undefined, true)
-      })
-    }
-  })
-
-  watch(() => websocketStore.getActiveSession()?.isConnected, (connected) => {
-    if (connected && meId.value) {
-      // Force refresh to always get the latest avatar on reconnect
-      avatarStore.ensureUserAvatar(meId.value, undefined, true)
-    }
-  })
-
-  return { userAvatarSrc }
-}
-
-const { userAvatarSrc } = useCurrentUserAvatar()
+// Self avatar is handled by SelfAvatar wrapper; no local ensure required here
 
 /**
  * Prefill chat avatars from persistent cache in parallel.
@@ -339,13 +299,12 @@ watch(activeGroupChats, (list) => {
                 class="mx-2 my-0.5 flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 transition-colors hover:bg-accent hover:text-accent-foreground"
                 @click="router.push(`/chat/${chat.id}`)"
               >
-                <!-- Ensure avatar only when this list item is rendered (visible) -->
-                <EnsureChatAvatarOnMount :chat-id="chat.id" :file-id="chat.avatarFileId" />
-                <Avatar
-                  :src="avatarStore.getChatAvatarUrl(chat.id)"
+                <ChatAvatar
+                  :id="chat.id"
+                  entity-type="chat"
+                  :file-id="chat.avatarFileId"
                   :name="chat.name"
                   size="sm"
-                  class="flex-shrink-0"
                 />
                 <div class="min-w-0 flex flex-1 flex-col">
                   <span class="truncate text-sm font-medium">
@@ -370,11 +329,10 @@ watch(activeGroupChats, (list) => {
             @click="handleAvatarClick"
           >
             <div class="h-8 w-8 flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
-              <Avatar
-                :src="userAvatarSrc"
+              <SelfAvatar
+                :user-id="websocketStore.getActiveSession()?.me?.id as any"
                 :name="websocketStore.getActiveSession()?.me?.name"
                 size="sm"
-                eager
               />
             </div>
             <div class="min-w-0 flex flex-1 flex-col">
