@@ -102,35 +102,33 @@ export function useEnsureChatAvatar(chatId: MaybeRef<string | number | undefined
  */
 export async function ensureUserAvatarImmediate(userId: string | number | undefined): Promise<void> {
   const avatarStore = useAvatarStore()
-  await (async () => {
-    const id = userId
-    if (!id)
-      return
-    const key = String(id)
-    const url = avatarStore.getUserAvatarUrl(id)
-    if (url)
-      return
-    if (avatarStore.inflightUserPrefillIds.has(key))
-      return
-    avatarStore.inflightUserPrefillIds.add(key)
-    try {
-      const prefillSuccess = await prefillUserAvatarIntoStore(key)
-      if (prefillSuccess) {
-        const fileId = avatarStore.getUserAvatarFileId(id)
-        if (fileId) {
-          const bridgeStore = useBridgeStore()
-          bridgeStore.sendEvent('entity:avatar:prime-cache', { userId: key, fileId })
-        }
-        return
+  const id = userId
+  if (!id)
+    return
+  const key = String(id)
+  const url = avatarStore.getUserAvatarUrl(id)
+  if (url)
+    return
+  if (avatarStore.inflightUserPrefillIds.has(key))
+    return
+  avatarStore.inflightUserPrefillIds.add(key)
+  try {
+    const prefillSuccess = await prefillUserAvatarIntoStore(key)
+    if (prefillSuccess) {
+      const fileId = avatarStore.getUserAvatarFileId(id)
+      if (fileId) {
+        const bridgeStore = useBridgeStore()
+        bridgeStore.sendEvent('entity:avatar:prime-cache', { userId: key, fileId })
       }
+      return
     }
-    catch {}
-    finally {
-      avatarStore.inflightUserPrefillIds.delete(key)
-    }
-    if (!avatarStore.getUserAvatarUrl(id))
-      avatarStore.ensureUserAvatar(String(id), avatarStore.getUserAvatarFileId(id))
-  })()
+  }
+  catch {}
+  finally {
+    avatarStore.inflightUserPrefillIds.delete(key)
+  }
+  if (!avatarStore.getUserAvatarUrl(id))
+    avatarStore.ensureUserAvatar(String(id), avatarStore.getUserAvatarFileId(id))
 }
 
 /**
@@ -139,21 +137,19 @@ export async function ensureUserAvatarImmediate(userId: string | number | undefi
  */
 export async function ensureChatAvatarImmediate(chatId: string | number | undefined, fileId?: string | number | undefined): Promise<void> {
   const avatarStore = useAvatarStore()
-  await (async () => {
-    const cid = chatId
-    const fid2 = fileId != null ? String(fileId) : undefined
-    if (!cid)
+  const cid = chatId
+  const fid2 = fileId != null ? String(fileId) : undefined
+  if (!cid)
+    return
+  const valid = avatarStore.hasValidChatAvatar(String(cid), fid2)
+  if (valid)
+    return
+  try {
+    await prefillChatAvatarIntoStore(String(cid))
+    if (avatarStore.hasValidChatAvatar(String(cid), fid2))
       return
-    const valid = avatarStore.hasValidChatAvatar(String(cid), fid2)
-    if (valid)
-      return
-    try {
-      await prefillChatAvatarIntoStore(String(cid))
-      if (avatarStore.hasValidChatAvatar(String(cid), fid2))
-        return
-    }
-    catch {}
-    if (!avatarStore.hasValidChatAvatar(String(cid), fid2))
-      avatarStore.ensureChatAvatar(String(cid), fid2)
-  })()
+  }
+  catch {}
+  if (!avatarStore.hasValidChatAvatar(String(cid), fid2))
+    avatarStore.ensureChatAvatar(String(cid), fid2)
 }

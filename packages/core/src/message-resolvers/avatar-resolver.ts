@@ -65,6 +65,49 @@ function createAvatarHelper(ctx: CoreContext) {
   // Concurrency control queue
   const downloadQueue = newQueue(AVATAR_DOWNLOAD_CONCURRENCY)
 
+  // Approximate byte budget (fallback: 50MB)
+  let byteBudget = 0
+  const BYTE_BUDGET_MAX = 50 * 1024 * 1024
+
+  function sleep(ms: number) {
+    return new Promise<void>(resolve => setTimeout(resolve, ms))
+  }
+
+  async function _retryOnce<T>(fn: () => Promise<T | undefined>, backoffMs = 500): Promise<T | undefined> {
+    try {
+      const r = await fn()
+      if (r !== undefined)
+        return r
+    }
+    catch {}
+    await sleep(backoffMs)
+    try {
+      return await fn()
+    }
+    catch {
+      return undefined
+    }
+  }
+
+  async function withTimeout<T>(p: Promise<T>, ms: number): Promise<T | undefined> {
+    return await Promise.race([p, new Promise<undefined>(resolve => setTimeout(() => resolve(undefined), ms))])
+  }
+
+  function sniffMime(byte: Buffer | Uint8Array | undefined): string {
+    if (!byte)
+      return 'image/jpeg'
+    const b = Buffer.isBuffer(byte) ? byte : Buffer.from(byte)
+    if (b.length >= 12 && b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47)
+      return 'image/png'
+    if (b.length >= 3 && b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF)
+      return 'image/jpeg'
+    if (b.length >= 12 && b.toString('ascii', 0, 4) === 'RIFF' && b.toString('ascii', 8, 12) === 'WEBP')
+      return 'image/webp'
+    if (b.length >= 6 && (b.toString('ascii', 0, 6) === 'GIF87a' || b.toString('ascii', 0, 6) === 'GIF89a'))
+      return 'image/gif'
+    return 'image/jpeg'
+  }
+
   /**
    * Resolve avatar fileId for a Telegram entity.
    * Returns undefined if no photo is present.
@@ -94,26 +137,37 @@ function createAvatarHelper(ctx: CoreContext) {
     return downloadQueue.add(async () => {
       let buffer: Buffer | Uint8Array | undefined
       try {
-        buffer = await getClient().downloadProfilePhoto(entity, { isBig: false }) as Buffer
+        buffer = await withTimeout(getClient().downloadProfilePhoto(entity, { isBig: false }) as Promise<Buffer>, 5000)
       }
       catch (err) {
         logger.withError(err as Error).debug('downloadProfilePhoto failed, trying fallback')
+      }
+      if (!buffer) {
         // eslint-disable-next-line ts/no-explicit-any
         const photo = (entity as Record<string, any>).photo
         if (photo) {
           try {
-            buffer = await getClient().downloadMedia(photo, { thumb: -1 }) as Buffer
+            buffer = await withTimeout(getClient().downloadMedia(photo, { thumb: -1 }) as Promise<Buffer>, 5000)
           }
           catch (err2) {
             logger.withError(err2 as Error).debug('downloadMedia fallback failed')
           }
+          if (!buffer) {
+            // One backoff retry on fallback path
+            buffer = await _retryOnce(async () => {
+              try {
+                const b = await withTimeout(getClient().downloadMedia(photo, { thumb: -1 }) as Promise<Buffer>, 5000)
+                return b ?? undefined
+              }
+              catch {
+                return undefined
+              }
+            }, 500)
+          }
         }
       }
-
       if (!buffer)
         return undefined
-
-      // Ensure Buffer for JSON-safe serialization
       return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
     })
   }
@@ -126,8 +180,7 @@ function createAvatarHelper(ctx: CoreContext) {
     fileId: string | undefined,
     downloadFn: () => Promise<Buffer | undefined>,
   ): Promise<{ byte: Buffer, mimeType: string } | undefined> {
-    // Allow downloads even when fileId is unavailable; only use fileId cache when present
-    const mimeType = 'image/jpeg' // TODO: add lightweight file-type sniffing
+    const mimeTypeDefault = 'image/jpeg'
     if (fileId) {
       const cached = fileIdByteCache.get(fileId)
       if (cached)
@@ -136,7 +189,7 @@ function createAvatarHelper(ctx: CoreContext) {
     const byte = await downloadFn()
     if (!byte)
       return undefined
-    const result = { byte, mimeType }
+    const result = { byte, mimeType: sniffMime(byte) || mimeTypeDefault }
     if (fileId)
       fileIdByteCache.set(fileId, result)
     return result
@@ -148,12 +201,12 @@ function createAvatarHelper(ctx: CoreContext) {
    * Optional expectedFileId allows early cache validation before entity fetch.
    */
   async function fetchUserAvatar(userId: string, expectedFileId?: string): Promise<void> {
+    const key = toKey(userId)
+    if (!key) {
+      logger.withFields({ userId }).verbose('Invalid userId; skip fetch')
+      return
+    }
     try {
-      const key = toKey(userId)
-      if (!key) {
-        logger.withFields({ userId }).verbose('Invalid userId; skip fetch')
-        return
-      }
       // Negative cache early exit: skip repeated requests for users without avatars
       if (noUserAvatarCache.get(key)) {
         logger.withFields({ userId: key }).verbose('User has no avatar (sentinel); skip fetch')
@@ -211,7 +264,23 @@ function createAvatarHelper(ctx: CoreContext) {
         return
       }
 
+      const prev = userAvatarCache.get(key)
+      if (prev?.byte)
+        byteBudget -= prev.byte.length
       userAvatarCache.set(key, { fileId, mimeType: result.mimeType, byte: result.byte })
+      byteBudget += result.byte.length
+      if (noUserAvatarCache.get(key))
+        noUserAvatarCache.delete(key)
+      if (byteBudget > BYTE_BUDGET_MAX) {
+        logger.warn('Avatar byte budget exceeded; clearing caches')
+        userAvatarCache.clear()
+        chatAvatarCache.clear()
+        dialogEntityCache.clear()
+        noUserAvatarCache.clear()
+        noChatAvatarCache.clear()
+        fileIdByteCache.clear()
+        byteBudget = 0
+      }
 
       emitter.emit('entity:avatar:data', { userId: key, byte: result.byte, mimeType: result.mimeType, fileId })
     }
@@ -219,11 +288,7 @@ function createAvatarHelper(ctx: CoreContext) {
       logger.withError(error as Error).warn('Failed to fetch avatar for user')
     }
     finally {
-      const key = toKey(userId)
-      if (key)
-        inflightUsers.delete(key)
-      else
-        logger.withFields({ userId }).verbose('Invalid userId in finally block')
+      inflightUsers.delete(key)
     }
   }
 
@@ -232,10 +297,10 @@ function createAvatarHelper(ctx: CoreContext) {
    * Emits `dialog:avatar:data` on success.
    */
   async function fetchDialogAvatar(chatId: string | number, opts: { entityOverride?: Api.User | Api.Chat | Api.Channel } = {}): Promise<void> {
+    const key = toKey(chatId)
+    if (!key)
+      return
     try {
-      const key = toKey(chatId)
-      if (!key)
-        return
       // Negative cache early exit for chats/channels without avatars
       if (noChatAvatarCache.get(key)) {
         logger.withFields({ chatId }).verbose('Chat has no avatar (sentinel); skip fetch')
@@ -263,7 +328,11 @@ function createAvatarHelper(ctx: CoreContext) {
       const fileId = resolveAvatarFileId(entity)
       const cached = chatAvatarCache.get(key)
       if (cached && ((fileId && cached.fileId === fileId) || (!fileId && cached.byte && cached.mimeType))) {
-        logger.withFields({ chatId }).verbose('Single avatar cache hit; skip emit')
+        logger.withFields({ chatId }).verbose('Single avatar cache hit; emit cached bytes')
+        if (cached.byte && cached.mimeType) {
+          const idNumCached = typeof chatId === 'string' ? Number(chatId) : chatId
+          emitter.emit('dialog:avatar:data', { chatId: idNumCached, byte: cached.byte, mimeType: cached.mimeType, fileId })
+        }
         return
       }
 
@@ -279,7 +348,23 @@ function createAvatarHelper(ctx: CoreContext) {
         return
       }
 
+      const prev2 = chatAvatarCache.get(key)
+      if (prev2?.byte)
+        byteBudget -= prev2.byte.length
       chatAvatarCache.set(key, { fileId, mimeType: result.mimeType, byte: result.byte })
+      byteBudget += result.byte.length
+      if (noChatAvatarCache.get(key))
+        noChatAvatarCache.delete(key)
+      if (byteBudget > BYTE_BUDGET_MAX) {
+        logger.warn('Avatar byte budget exceeded; clearing caches')
+        userAvatarCache.clear()
+        chatAvatarCache.clear()
+        dialogEntityCache.clear()
+        noUserAvatarCache.clear()
+        noChatAvatarCache.clear()
+        fileIdByteCache.clear()
+        byteBudget = 0
+      }
 
       const idNum = typeof chatId === 'string' ? Number(chatId) : chatId
       emitter.emit('dialog:avatar:data', { chatId: idNum, byte: result.byte, mimeType: result.mimeType, fileId })
@@ -288,12 +373,7 @@ function createAvatarHelper(ctx: CoreContext) {
       logger.withError(error as Error).warn('Failed to fetch single avatar for dialog')
     }
     finally {
-      try {
-        const key2 = toKey(chatId)
-        if (key2)
-          inflightChats.delete(key2)
-      }
-      catch {}
+      inflightChats.delete(key)
     }
   }
 
@@ -408,7 +488,34 @@ function createAvatarHelper(ctx: CoreContext) {
       fileIdBytes: fileIdByteCache.size,
       maxSize: MAX_AVATAR_CACHE_SIZE,
       ttl: `${AVATAR_CACHE_TTL / 1000}s`,
+      byteBudget,
     }),
+    primeUserAvatarCacheBatch: (list: Array<{ userId: string, fileId: string }>) => {
+      for (const { userId, fileId } of list) {
+        // reuse single prime method
+        // Only prime if we don't already have cached bytes
+        ((): void => {
+          const key = toKey(userId)
+          if (!key)
+            return
+          const existing = userAvatarCache.get(key)
+          if (!existing || !existing.byte)
+            userAvatarCache.set(key, { fileId, mimeType: '', byte: undefined })
+        })()
+      }
+    },
+    primeChatAvatarCacheBatch: (list: Array<{ chatId: string, fileId: string }>) => {
+      for (const { chatId, fileId } of list) {
+        ((): void => {
+          const key = toKey(chatId)
+          if (!key)
+            return
+          const existing = chatAvatarCache.get(key)
+          if (!existing || !existing.byte)
+            chatAvatarCache.set(key, { fileId, mimeType: '', byte: undefined })
+        })()
+      }
+    },
   }
 }
 
