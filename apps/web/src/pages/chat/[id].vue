@@ -9,7 +9,7 @@ import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { toast } from 'vue-sonner'
 
-import ChatAvatar from '../../components/avatar/ChatAvatar.vue'
+import EntityAvatar from '../../components/avatar/EntityAvatar.vue'
 import SearchDialog from '../../components/SearchDialog.vue'
 import VirtualMessageList from '../../components/VirtualMessageList.vue'
 
@@ -251,9 +251,10 @@ watch(
     <!-- Chat Header -->
     <div class="flex items-center justify-between border-b bg-card/50 px-6 py-4 backdrop-blur-sm">
       <div class="flex items-center gap-3">
-        <ChatAvatar
+        <EntityAvatar
           v-if="currentChat && currentChat.id != null"
           :id="currentChat.id"
+          entity="other"
           entity-type="chat"
           :file-id="currentChat?.avatarFileId"
           :name="currentChat?.name"

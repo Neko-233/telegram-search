@@ -6,7 +6,7 @@ import { computed, useTemplateRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 
-import SelfAvatar from '../avatar/SelfAvatar.vue'
+import EntityAvatar from '../avatar/EntityAvatar.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -45,9 +45,11 @@ const userId = computed(() => activeSessionComputed.value?.me?.id)
     class="absolute left-0 top-full z-10 mt-2 min-w-[200px] border border-border rounded-md bg-popover p-2 shadow-lg dark:border-gray-600 dark:bg-gray-800"
   >
     <div class="flex items-center gap-3 border-b p-3 dark:border-gray-600">
-      <SelfAvatar
+      <EntityAvatar
         v-if="userId != null"
-        :user-id="userId"
+        :id="userId"
+        entity="self"
+        entity-type="user"
         :name="username"
         size="md"
       />

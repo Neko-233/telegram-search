@@ -3,7 +3,7 @@ import type { CoreMessage } from '@tg-search/core/types'
 
 import { formatMessageTimestamp } from '@tg-search/client'
 
-import ChatAvatar from '../avatar/ChatAvatar.vue'
+import EntityAvatar from '../avatar/EntityAvatar.vue'
 import MediaRenderer from './media/MediaRenderer.vue'
 
 defineProps<{
@@ -16,8 +16,9 @@ defineProps<{
 <template>
   <div class="group mx-3 my-1 flex items-start gap-3 rounded-xl p-3 transition-all duration-200 md:mx-4 md:gap-4 hover:bg-accent/50">
     <div class="flex-shrink-0 pt-0.5">
-      <ChatAvatar
+      <EntityAvatar
         :id="message.fromId"
+        entity="other"
         entity-type="user"
         :name="message.fromName"
         size="md"

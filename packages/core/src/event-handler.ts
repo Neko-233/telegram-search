@@ -52,6 +52,10 @@ export function basicEventHandler(
   registry.register('media', createMediaResolver(ctx))
   registry.register('user', createUserResolver(ctx))
   // Centralized avatar fetching for users (via messages)
+  // Note: avatar resolver is registered but filtered by the disabled list
+  // (see message-resolver service). Current strategy is client-driven and
+  // on-demand via frontend events; the resolver remains available to enable
+  // server-side prefetch in the future if desired.
   registry.register('avatar', createAvatarResolver(ctx))
   registry.register('link', createLinkResolver())
   registry.register('embedding', createEmbeddingResolver())

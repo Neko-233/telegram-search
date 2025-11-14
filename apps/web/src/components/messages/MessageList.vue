@@ -8,7 +8,7 @@ import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { toast } from 'vue-sonner'
 
-import ChatAvatar from '../avatar/ChatAvatar.vue'
+import EntityAvatar from '../avatar/EntityAvatar.vue'
 import ContextMenu from '../ui/ContextMenu.vue'
 
 const props = defineProps<{
@@ -104,8 +104,9 @@ function handleLongPress(event: TouchEvent, message: CoreMessage) {
       @touchstart.passive="handleLongPress($event, item)"
     >
       <div class="flex-shrink-0 pt-0.5">
-        <ChatAvatar
+        <EntityAvatar
           :id="item.fromId"
+          entity="other"
           entity-type="user"
           :name="item.fromName"
           size="md"

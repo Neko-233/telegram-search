@@ -14,8 +14,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { RouterView, useRoute, useRouter } from 'vue-router'
 
-import ChatAvatar from '../components/avatar/ChatAvatar.vue'
-import SelfAvatar from '../components/avatar/SelfAvatar.vue'
+import EntityAvatar from '../components/avatar/EntityAvatar.vue'
 import LanguageSelector from '../components/layout/LanguageSelector.vue'
 import SidebarSelector from '../components/layout/SidebarSelector.vue'
 
@@ -299,8 +298,9 @@ watch(activeGroupChats, (list) => {
                 class="mx-2 my-0.5 flex cursor-pointer items-center gap-2.5 rounded-md px-3 py-2 transition-colors hover:bg-accent hover:text-accent-foreground"
                 @click="router.push(`/chat/${chat.id}`)"
               >
-                <ChatAvatar
+                <EntityAvatar
                   :id="chat.id"
+                  entity="other"
                   entity-type="chat"
                   :file-id="chat.avatarFileId"
                   :name="chat.name"
@@ -329,9 +329,11 @@ watch(activeGroupChats, (list) => {
             @click="handleAvatarClick"
           >
             <div class="h-8 w-8 flex flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted">
-              <SelfAvatar
+              <EntityAvatar
                 v-if="websocketStore.getActiveSession()?.me?.id != null"
-                :user-id="websocketStore.getActiveSession()?.me?.id!"
+                :id="websocketStore.getActiveSession()?.me?.id!"
+                entity="self"
+                entity-type="user"
                 :name="websocketStore.getActiveSession()?.me?.name"
                 size="sm"
               />
