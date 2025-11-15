@@ -87,6 +87,11 @@ export default defineConfig({
       },
       workbox: {
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+        // https://github.com/moeru-ai/airi/blob/main/apps/stage-web/vite.config.ts#L136-L141
+        navigateFallbackDenylist: [
+          /^\/api\//,
+          /^\/ws\//,
+        ],
       },
     }),
 
