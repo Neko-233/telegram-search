@@ -134,8 +134,6 @@ function handleAvatarClick() {
   }
 }
 
-// Self avatar is handled by SelfAvatar wrapper; no local ensure required here
-
 /**
  * Prefill chat avatars from persistent cache in parallel.
  * - Avoids sequential IndexedDB waits when chat list is large.
@@ -150,9 +148,6 @@ async function prefillChatAvatarsParallel(list: CoreDialog[]) {
     console.warn('Failed to prefill chat avatars', error)
   }
 }
-
-// Prefill chat avatars when chat list changes (parallelized)
-// Removed global prefill for entire chat list to avoid non-visible loads.
 
 /**
  * Prefill avatars for currently visible chats only.
@@ -170,8 +165,6 @@ watch(activeGroupChats, (list) => {
     return
   void prioritizeVisibleAvatars(list)
 }, { immediate: true })
-
-// Visible-only ensure handled per list item via helper component.
 </script>
 
 <template>

@@ -143,10 +143,6 @@ export const useAvatarStore = defineStore('avatar', () => {
   /**
    * Check whether a chat avatar is present and non-expired in the in-memory cache.
    * Optionally validates that the cached `fileId` matches the given `expectedFileId`.
-   *
-   * @param chatId - Chat identifier
-   * @param expectedFileId - Optional fileId to validate against the cached entry
-   * @returns true if a valid avatar exists (and fileId matches when provided)
    */
   function hasValidChatAvatar(chatId: string | number | undefined, expectedFileId?: string): boolean {
     return hasValid(chatAvatars, chatId, expectedFileId)

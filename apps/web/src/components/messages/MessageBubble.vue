@@ -9,8 +9,6 @@ import MediaRenderer from './media/MediaRenderer.vue'
 defineProps<{
   message: CoreMessage
 }>()
-
-// Use ChatAvatar wrapper to handle ensure and rendering
 </script>
 
 <template>

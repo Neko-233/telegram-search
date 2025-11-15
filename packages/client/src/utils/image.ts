@@ -4,8 +4,8 @@
  * Use precise ArrayBuffer slicing to avoid entire block copying and reduce memory usage.
  */
 export function bytesToBlob(byte: Uint8Array, mimeType: string): Blob {
-  // Use byte.buffer.slice to get a precise ArrayBuffer slice, avoiding copying the entire underlying buffer
-  // This allows sharing the memory of the original ArrayBuffer, reducing memory usage
+  // Create a new ArrayBuffer containing a copy of the bytes in the Uint8Array view.
+  // This method is more robust than assuming the buffer size of the Uint8Array is exactly correct.
   const preciseBuffer = byte.buffer.slice(byte.byteOffset, byte.byteOffset + byte.byteLength)
   // Ensure the returned Buffer is ArrayBuffer rather than SharedArrayBuffer, as Blob constructor requires ArrayBuffer
   if (preciseBuffer instanceof ArrayBuffer) {

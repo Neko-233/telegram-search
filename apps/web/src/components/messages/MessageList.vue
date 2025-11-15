@@ -83,10 +83,6 @@ function handleLongPress(event: TouchEvent, message: CoreMessage) {
   contextMenuY.value = touch.clientY
   contextMenuOpen.value = true
 }
-
-// Rendering via ChatAvatar wrapper; ensure is handled internally
-
-// Removed external ensure; wrapper triggers per visible item
 </script>
 
 <template>
