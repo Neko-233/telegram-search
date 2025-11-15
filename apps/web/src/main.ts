@@ -1,6 +1,7 @@
 import NProgress from 'nprogress'
 
 import { autoAnimatePlugin } from '@formkit/auto-animate/vue'
+import { initLogger, LoggerFormat, LoggerLevel } from '@guiiai/logg'
 import { VueQueryPlugin } from '@tanstack/vue-query'
 import { createPinia } from 'pinia'
 import { setupLayouts } from 'virtual:generated-layouts'
@@ -17,6 +18,8 @@ import 'uno.css'
 import 'nprogress/nprogress.css'
 import 'vue-sonner/style.css'
 import './styles/main.css'
+
+initLogger(LoggerLevel.Verbose, LoggerFormat.Pretty)
 
 const app = createApp(App)
 
