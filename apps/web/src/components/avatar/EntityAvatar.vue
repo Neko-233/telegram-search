@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
+
 import Avatar from '../ui/Avatar.vue'
 
 import { useEntityAvatar } from '../../composables/useEntityAvatar'
@@ -20,8 +22,15 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const { src } = useEntityAvatar(props)
+
+const animated = ref(false)
+watch(src, (newVal, oldVal) => {
+  const hadBefore = Boolean(oldVal)
+  const hasNow = Boolean(newVal)
+  animated.value = !hadBefore && hasNow
+})
 </script>
 
 <template>
-  <Avatar :src="src" :name="props.name" :size="props.size" />
+  <Avatar :src="src" :name="props.name" :size="props.size" :animated="animated" />
 </template>

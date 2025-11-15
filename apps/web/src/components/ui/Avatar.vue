@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 interface Props {
   src?: string
@@ -7,12 +7,14 @@ interface Props {
   size?: 'sm' | 'md' | 'lg'
   isOnline?: boolean
   eager?: boolean
+  animated?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   size: 'md',
   isOnline: false,
   eager: false,
+  animated: false,
 })
 
 const sizeMap = {
@@ -55,6 +57,14 @@ const backgroundColor = computed(() => {
   const index = props.name.trim().split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)
   return colors[index % colors.length]
 })
+
+const loaded = ref(false)
+watch(() => props.src, () => {
+  loaded.value = false
+})
+function handleLoaded() {
+  loaded.value = true
+}
 </script>
 
 <template>
@@ -71,9 +81,19 @@ const backgroundColor = computed(() => {
         :alt="name"
         :loading="eager ? 'eager' : 'lazy'"
         decoding="async"
-        class="h-full w-full object-cover"
+        :class="[
+          'h-full w-full object-cover transition-all duration-300',
+          animated
+            ? (loaded ? 'opacity-100 blur-0 scale-100' : 'opacity-70 blur-sm scale-105')
+            : '',
+        ]"
+        @load="handleLoaded"
+        @error="handleLoaded"
       >
       <span v-else class="text-sm">{{ initials }}</span>
+    </div>
+    <div v-if="animated && src && !loaded" class="absolute inset-0 overflow-hidden rounded-full">
+      <div class="shimmer" />
     </div>
     <div
       v-if="isOnline"
@@ -81,3 +101,17 @@ const backgroundColor = computed(() => {
     />
   </div>
 </template>
+
+<style scoped>
+.shimmer {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,.25) 50%, rgba(255,255,255,0) 100%);
+  animation: shimmer 1.2s infinite;
+  transform: translateX(-100%);
+}
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+</style>

@@ -192,9 +192,9 @@ export async function loadUserAvatarFromCache(userId: string | number | undefine
     const url = URL.createObjectURL(latest.blob)
     const result = { url, mimeType: latest.mimeType, fileId: latest.fileId }
 
-    // 🗑️ 关键优化：清理对原始blob的引用，让GC可以回收ArrayBuffer内存
-    latest.blob = null as any
-    latest = undefined as any
+    // Clean reference to original Blob to help GC reclaim memory
+    latest.blob = new Blob()
+    latest = undefined
 
     return result
   }
@@ -240,9 +240,9 @@ export async function loadChatAvatarFromCache(chatId: string | number | undefine
     const url = URL.createObjectURL(latest.blob)
     const result = { url, mimeType: latest.mimeType, fileId: latest.fileId }
 
-    // 🗑️ 关键优化：清理对原始blob的引用，让GC可以回收ArrayBuffer内存
-    latest.blob = null as any
-    latest = undefined as any
+    // Clean reference to original Blob to help GC reclaim memory
+    latest.blob = new Blob()
+    latest = undefined
 
     return result
   }
@@ -324,10 +324,15 @@ export async function clearAvatarCache(): Promise<void> {
  * Shared helper to prefill in-memory avatar store from disk cache.
  * Loads cached blob URL via provided loader and applies it to store via callback.
  */
+interface AvatarStoreLike {
+  setUserAvatar: (userId: string | number, data: { blobUrl: string, fileId?: string, mimeType?: string, ttlMs?: number }) => void
+  setChatAvatar: (chatId: string | number, data: { blobUrl: string, fileId?: string, mimeType?: string, ttlMs?: number }) => void
+}
+
 async function prefillAvatarIntoStore<T extends string | number | undefined>(
   id: T,
   loader: (id: T) => Promise<{ url: string, mimeType: string, fileId?: string } | undefined>,
-  apply: (store: any, idStr: string, url: string, mimeType: string, fileId?: string) => void,
+  apply: (store: AvatarStoreLike, idStr: string, url: string, mimeType: string, fileId?: string) => void,
 ): Promise<boolean> {
   try {
     const mod = await loader(id)
@@ -335,7 +340,7 @@ async function prefillAvatarIntoStore<T extends string | number | undefined>(
       return false
     const { useAvatarStore } = await import('../stores/useAvatar')
     const store = useAvatarStore()
-    apply(store, String(id!), mod.url, mod.mimeType, mod.fileId)
+    apply(store as unknown as AvatarStoreLike, String(id!), mod.url, mod.mimeType, mod.fileId)
     return true
   }
   catch {
