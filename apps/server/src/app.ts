@@ -9,6 +9,8 @@ import { initDrizzle } from '@tg-search/core'
 import { createApp, createRouter, defineEventHandler, toNodeListener } from 'h3'
 import { listen } from 'listhen'
 
+import pkg from '../package.json' with { type: 'json' }
+
 import { setupWsRoutes } from './ws/routes'
 
 function setupErrorHandlers(logger: ReturnType<typeof useLogger>): void {
@@ -70,6 +72,9 @@ async function bootstrap() {
   const flags = parseEnvFlags(process.env as Record<string, string>)
   initLogger(flags.logLevel, flags.logFormat)
   const logger = useLogger().useGlobalConfig()
+
+  logger.log(`Telegram Search v${pkg.version}`)
+
   const config = await initConfig(flags)
 
   try {
