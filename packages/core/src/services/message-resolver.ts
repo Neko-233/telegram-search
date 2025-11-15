@@ -43,17 +43,9 @@ export function createMessageResolverService(ctx: CoreContext) {
       // We keep the resolver registered but filtered by disabled list so it can be
       // re-enabled later if a prefetch strategy is desired.
       let disabledResolvers = useConfig().resolvers.disabledResolvers || []
-      if (options.takeout) {
-        const extra = ['avatar']
-        const set = new Set(disabledResolvers)
-        for (const name of extra) set.add(name)
-        disabledResolvers = Array.from(set)
-      }
-      else {
-        const set = new Set(disabledResolvers)
-        set.add('avatar')
-        disabledResolvers = Array.from(set)
-      }
+      const set = new Set(disabledResolvers)
+      set.add('avatar')
+      disabledResolvers = Array.from(set)
 
       // Embedding or resolve messages
       const promises = Array.from(resolvers.registry.entries())

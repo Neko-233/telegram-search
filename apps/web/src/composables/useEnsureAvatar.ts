@@ -12,11 +12,6 @@ type MaybeRef<T> = T | Ref<T> | ComputedRef<T>
  * - If still missing, triggers network fetch via centralized avatar store.
  * - Re-runs when `userId` changes.
  */
-// Client-driven, on-demand avatar ensure flow.
-// Shared helper that:
-// 1) Short-circuits when cache is valid (TTL and optional fileId match)
-// 2) Prefills memory from IndexedDB and primes server LRU (fileId)
-// 3) Falls back to explicit fetch only when still invalid
 async function ensureCore(
   idRaw: string | number | undefined,
   opts: {
