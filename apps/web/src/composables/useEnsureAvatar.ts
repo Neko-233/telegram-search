@@ -53,17 +53,57 @@ async function ensureCore(
     opts.ensureFetch(String(id), opts.expectedFileId)
 }
 
-async function ensureUserAvatarCore(userIdRaw: string | number | undefined): Promise<void> {
+/**
+ * Generic core to ensure avatar availability for an entity.
+ * Supports `user` and `chat` kinds, prefilling cache first, then fetching.
+ */
+interface AvatarStrategy {
+  hasValid: (id: string, expectedFileId?: string) => boolean
+  inflightPrefillIds?: Set<string>
+  prefill: (id: string) => Promise<boolean>
+  getFileId: (id: string | number | undefined) => string | undefined
+  primeCache: (id: string, fileId: string) => void
+  ensureFetch: (id: string, expectedFileId?: string) => void
+}
+async function ensureAvatarCore(
+  kind: 'user' | 'chat',
+  idRaw: string | number | undefined,
+  fileIdRaw?: string | number | undefined,
+): Promise<void> {
   const avatarStore = useAvatarStore()
   const bridgeStore = useBridgeStore()
-  await ensureCore(userIdRaw, {
-    hasValid: id => avatarStore.hasValidUserAvatar(id),
-    inflightPrefillIds: avatarStore.inflightUserPrefillIds,
-    prefill: id => prefillUserAvatarIntoStore(id),
-    getFileId: id => avatarStore.getUserAvatarFileId(id),
-    primeCache: (id, fileId) => bridgeStore.sendEvent('entity:avatar:prime-cache', { userId: id, fileId }),
-    ensureFetch: (id, expected) => avatarStore.ensureUserAvatar(id, expected),
+  const expected = fileIdRaw != null ? String(fileIdRaw) : undefined
+  const strategies: Record<'user' | 'chat', AvatarStrategy> = {
+    user: {
+      hasValid: (id: string, _exp?: string) => avatarStore.hasValidUserAvatar(id),
+      inflightPrefillIds: avatarStore.inflightUserPrefillIds,
+      prefill: (id: string) => prefillUserAvatarIntoStore(id),
+      getFileId: (id: string | number | undefined) => avatarStore.getUserAvatarFileId(id),
+      primeCache: (id: string, fileId: string) => bridgeStore.sendEvent('entity:avatar:prime-cache', { userId: id, fileId }),
+      ensureFetch: (id: string, exp?: string) => avatarStore.ensureUserAvatar(id, exp),
+    },
+    chat: {
+      hasValid: (id: string, exp?: string) => avatarStore.hasValidChatAvatar(id, exp),
+      prefill: (id: string) => prefillChatAvatarIntoStore(id),
+      getFileId: (id: string | number | undefined) => avatarStore.getChatAvatarFileId(id),
+      primeCache: (id: string, fileId: string) => bridgeStore.sendEvent('entity:chat-avatar:prime-cache', { chatId: id, fileId }),
+      ensureFetch: (id: string, exp?: string) => avatarStore.ensureChatAvatar(id, exp),
+    },
+  }
+  const s = strategies[kind]
+  await ensureCore(idRaw, {
+    hasValid: s.hasValid,
+    inflightPrefillIds: s.inflightPrefillIds,
+    prefill: s.prefill,
+    getFileId: s.getFileId,
+    primeCache: s.primeCache,
+    ensureFetch: s.ensureFetch,
+    expectedFileId: expected,
   })
+}
+
+async function ensureUserAvatarCore(userIdRaw: string | number | undefined): Promise<void> {
+  await ensureAvatarCore('user', userIdRaw)
 }
 
 export function useEnsureUserAvatar(userId: MaybeRef<string | number | undefined>): void {
@@ -74,25 +114,8 @@ export function useEnsureUserAvatar(userId: MaybeRef<string | number | undefined
   watch(() => unref(userId), ensure)
 }
 
-/**
- * Ensure a chat's avatar on component mount.
- * Behavior:
- * - Prefills from IndexedDB cache using chatId.
- * - If cache invalid or missing, triggers prioritized fetch with fileId.
- * - Watches `chatId`/`fileId` to re-run when they change.
- */
 async function ensureChatAvatarCore(chatIdRaw: string | number | undefined, fileIdRaw?: string | number | undefined): Promise<void> {
-  const avatarStore = useAvatarStore()
-  const bridgeStore = useBridgeStore()
-  const expected = fileIdRaw != null ? String(fileIdRaw) : undefined
-  await ensureCore(chatIdRaw, {
-    hasValid: (id, exp) => avatarStore.hasValidChatAvatar(id, exp),
-    prefill: id => prefillChatAvatarIntoStore(id),
-    getFileId: id => avatarStore.getChatAvatarFileId(id),
-    primeCache: (id, fileId) => bridgeStore.sendEvent('entity:chat-avatar:prime-cache', { chatId: id, fileId }),
-    ensureFetch: (id, exp) => avatarStore.ensureChatAvatar(id, exp),
-    expectedFileId: expected,
-  })
+  await ensureAvatarCore('chat', chatIdRaw, fileIdRaw)
 }
 
 export function useEnsureChatAvatar(chatId: MaybeRef<string | number | undefined>, fileId?: MaybeRef<string | number | undefined>): void {
