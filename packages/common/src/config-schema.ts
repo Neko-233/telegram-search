@@ -78,7 +78,8 @@ export const apiConfigSchema = object({
 })
 
 export const resolversConfigSchema = object({
-  disabledResolvers: optional(array(string()), []),
+  // Avatar resolver is disabled by default: client-driven, on-demand fetching
+  disabledResolvers: optional(array(string()), ['avatar']),
 })
 
 export const configSchema = object({
@@ -96,14 +97,6 @@ export function generateDefaultConfig(): Config {
   if (!defaultConfig.success) {
     throw new Error('Failed to generate default config', { cause: defaultConfig.issues })
   }
-  const output = defaultConfig.output
-  // Disable avatar resolver by default to adopt a client-driven, on-demand
-  // avatar loading strategy. Frontend requests (entity:avatar:fetch / dialog:avatar:fetch)
-  // explicitly trigger downloads when needed. Keeping this default reduces
-  // unnecessary server-side prefetch when client cache/persistence is valid.
-  output.resolvers = output.resolvers || { disabledResolvers: [] }
-  const set = new Set(output.resolvers.disabledResolvers || [])
-  set.add('avatar')
-  output.resolvers.disabledResolvers = Array.from(set)
-  return output
+
+  return defaultConfig.output
 }
