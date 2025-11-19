@@ -3,6 +3,8 @@ import type { EntityService } from '../services/entity'
 
 import { useLogger } from '@guiiai/logg'
 
+import { recordAccount } from '../models'
+
 export function registerEntityEventHandlers(ctx: CoreContext) {
   const { emitter } = ctx
   const logger = useLogger('core:entity:event')
@@ -10,7 +12,15 @@ export function registerEntityEventHandlers(ctx: CoreContext) {
   return (entityService: EntityService) => {
     emitter.on('entity:me:fetch', async () => {
       logger.verbose('Getting me info')
-      await entityService.getMeInfo()
+      const meInfo = (await entityService.getMeInfo()).expect('Failed to get me info')
+
+      // Record account and set current account ID
+      logger.withFields({ userId: meInfo.id }).verbose('Recording account for current user')
+
+      const [account] = (await recordAccount('telegram', meInfo.id))?.expect('Failed to record account')
+      ctx.setCurrentAccountId(account.id)
+
+      logger.withFields({ accountId: account.id }).verbose('Set current account ID')
     })
 
     emitter.on('entity:avatar:fetch', async ({ userId, fileId }) => {

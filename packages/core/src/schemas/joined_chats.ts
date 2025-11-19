@@ -1,6 +1,9 @@
 // https://github.com/moeru-ai/airi/blob/main/services/telegram-bot/src/db/schema.ts
 
+import { relations } from 'drizzle-orm'
 import { bigint, pgTable, text, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
+
+import { accountJoinedChatsTable } from './account_joined_chats'
 
 export const joinedChatsTable = pgTable('joined_chats', () => {
   return {
@@ -20,3 +23,7 @@ export const joinedChatsTable = pgTable('joined_chats', () => {
     },
   ]
 })
+
+export const joinedChatsRelations = relations(joinedChatsTable, ({ many }) => ({
+  accountJoinedChats: many(accountJoinedChatsTable),
+}))

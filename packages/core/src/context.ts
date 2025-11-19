@@ -47,6 +47,7 @@ export function createCoreContext() {
   const emitter = new EventEmitter<CoreEvent>()
   const withError = createErrorHandler(emitter)
   let telegramClient: TelegramClient
+  let currentAccountId: string | undefined
 
   const toCoreEvents = new Set<keyof ToCoreEvent>()
   const fromCoreEvents = new Set<keyof FromCoreEvent>()
@@ -107,6 +108,18 @@ export function createCoreContext() {
     return telegramClient
   }
 
+  function setCurrentAccountId(accountId: string) {
+    useLogger().withFields({ accountId }).debug('Set current account ID')
+    currentAccountId = accountId
+  }
+
+  function getCurrentAccountId(): string {
+    if (!currentAccountId) {
+      throw withError('Current account ID not set')
+    }
+    return currentAccountId
+  }
+
   // Setup memory leak detection and get cleanup function
   const cleanupMemoryLeakDetector = detectMemoryLeak(emitter)
 
@@ -127,6 +140,9 @@ export function createCoreContext() {
     // @ts-expect-error - Allow setting to undefined for cleanup
     telegramClient = undefined
 
+    // Clear account reference
+    currentAccountId = undefined
+
     useLogger().debug('CoreContext cleaned up')
   }
 
@@ -146,6 +162,8 @@ export function createCoreContext() {
     wrapEmitterOn,
     setClient,
     getClient: ensureClient,
+    setCurrentAccountId,
+    getCurrentAccountId,
     withError,
     cleanup,
   }
