@@ -2,13 +2,14 @@ import process from 'node:process'
 
 import { spawn } from 'node:child_process'
 
-import { useLogger } from '@guiiai/logg'
+import { initLogger, useLogger } from '@guiiai/logg'
 
 import { getDatabaseDSN, initConfig, parseEnvFlags, useConfig } from '../packages/common/src'
 
 (async () => {
   const flags = parseEnvFlags(process.env)
   await initConfig(flags)
+  initLogger(flags.logLevel, flags.logFormat)
   const logger = useLogger('script:drizzle')
 
   const dsn = getDatabaseDSN(useConfig())
@@ -20,16 +21,8 @@ import { getDatabaseDSN, initConfig, parseEnvFlags, useConfig } from '../package
         ...process.env,
         DATABASE_DSN: dsn,
       },
-      stdio: 'pipe',
-      shell: true,
-    })
-
-    child.stdout.on('data', (data) => {
-      useLogger('script:drizzle').log(data)
-    })
-
-    child.stderr.on('data', (data) => {
-      useLogger('script:drizzle').error(data)
+      stdio: 'inherit', // Use current terminal's stdin/stdout/stderr
+      shell: false,
     })
 
     await new Promise<void>((resolve, reject) => {
