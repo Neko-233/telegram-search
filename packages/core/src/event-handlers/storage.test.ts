@@ -1,0 +1,122 @@
+import type { CoreDialog } from '../types/dialog'
+
+import { describe, expect, it, vi } from 'vitest'
+
+import { createCoreContext } from '../context'
+import { fetchChatsByAccountId, getChatMessagesStats, recordChats } from '../models'
+import { registerStorageEventHandlers } from './storage'
+
+// Minimal Result-like helper used in mocks
+function ok<T>(value: T) {
+  return {
+    unwrap(): T {
+      return value
+    },
+  }
+}
+
+vi.mock('../models', () => {
+  // In tests we only care about dialogs-related functions, other exports can be no-ops
+  const fetchChatsByAccountId = vi.fn(async (accountId: string) => {
+    const rows = [
+      {
+        id: 'joined-chat-1',
+        platform: 'telegram',
+        chat_id: '1001',
+        chat_name: 'Test Chat',
+        chat_type: 'user',
+        dialog_date: Date.now(),
+        created_at: Date.now(),
+        updated_at: Date.now(),
+      },
+    ]
+    return ok(rows)
+  })
+
+  const getChatMessagesStats = vi.fn(async () => {
+    const stats = [
+      {
+        chat_id: '1001',
+        message_count: 42,
+      },
+    ]
+    return ok(stats)
+  })
+
+  const recordChats = vi.fn(async () => {
+    // Simulate Result-like object used by production code
+    return {
+      expect<T>(_message: string): T[] {
+        // For this test we don't need to assert on returned value
+        return [] as unknown as T[]
+      },
+    }
+  })
+
+  return {
+    // Dialog-related exports
+    fetchChatsByAccountId,
+    getChatMessagesStats,
+    recordChats,
+
+    // Other exports referenced by storage.ts but unused in these tests
+    convertToCoreRetrievalMessages: vi.fn(),
+    fetchMessageContextWithPhotos: vi.fn(),
+    fetchMessagesWithPhotos: vi.fn(),
+    recordMessagesWithMedia: vi.fn(),
+    retrieveMessages: vi.fn(),
+  }
+})
+
+describe('storage event handlers - dialogs with accounts', () => {
+  it('storage:fetch:dialogs should query dialogs for given account and emit mapped dialogs', async () => {
+    const ctx = createCoreContext()
+    registerStorageEventHandlers(ctx)
+
+    const ACCOUNT_ID = 'account-xyz'
+
+    const dialogsPromise = new Promise<CoreDialog[]>((resolve) => {
+      ctx.emitter.on('storage:dialogs', ({ dialogs }) => {
+        resolve(dialogs)
+      })
+    })
+
+    ctx.emitter.emit('storage:fetch:dialogs', { accountId: ACCOUNT_ID })
+
+    const dialogs = await dialogsPromise
+
+    // Verify models were called with correct account id
+    expect(fetchChatsByAccountId).toHaveBeenCalledWith(ACCOUNT_ID)
+    expect(getChatMessagesStats).toHaveBeenCalled()
+
+    // Verify mapping to CoreDialog shape
+    expect(dialogs).toEqual([
+      {
+        id: 1001,
+        name: 'Test Chat',
+        type: 'user',
+        messageCount: 42,
+      },
+    ])
+  })
+
+  it('storage:record:dialogs should call recordChats with dialogs and accountId', async () => {
+    const ctx = createCoreContext()
+    registerStorageEventHandlers(ctx)
+
+    const ACCOUNT_ID = 'account-abc'
+    const dialogs: CoreDialog[] = [
+      {
+        id: 2001,
+        name: 'Another Chat',
+        type: 'group',
+        messageCount: 0,
+      },
+    ]
+
+    ctx.emitter.emit('storage:record:dialogs', { dialogs, accountId: ACCOUNT_ID })
+
+    expect(recordChats).toHaveBeenCalledTimes(1)
+    expect(recordChats).toHaveBeenCalledWith(dialogs, ACCOUNT_ID)
+  })
+})

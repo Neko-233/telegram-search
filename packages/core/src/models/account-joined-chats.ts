@@ -54,4 +54,3 @@ export async function findAccountIdsByJoinedChatId(joinedChatId: string) {
     return results.map(r => r.account_id)
   })
 }
-

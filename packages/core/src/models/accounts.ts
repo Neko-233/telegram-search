@@ -60,4 +60,3 @@ export async function findAccountByUUID(uuid: string) {
     return results[0] || null
   })
 }
-
