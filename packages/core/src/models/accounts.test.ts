@@ -1,32 +1,18 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import { setDbInstanceForTests } from '../db'
+import { createInsertMock, createSelectOneMock } from '../db/fakedb'
 import { accountsTable } from '../schemas/accounts'
-import { findAccountByPlatformId, findAccountByUUID, recordAccount } from './accounts'
+import { findAccountByPlatformId, findAccountByUUID } from './accounts'
 
 describe('accounts model', () => {
   it('recordAccount should insert account with correct values', async () => {
-    const insert = vi.fn(() => ({
-      values,
-      onConflictDoUpdate,
-      returning,
-    }))
-    const values = vi.fn(() => ({
-      onConflictDoUpdate,
-      returning,
-    }))
-    const onConflictDoUpdate = vi.fn(() => ({
-      returning,
-    }))
-    const returning = vi.fn(async () => [{ id: 'account-1' }])
+    const { insert, values, onConflictDoUpdate, returning } = createInsertMock()
 
-    const fakeDb = {
-      insert,
-    }
+    const fakeDb = { insert }
+    setDbInstanceForTests(fakeDb)
 
-    setDbInstanceForTests(fakeDb as any)
-
-    await recordAccount('telegram', 'user-123')
+    await findAccountByPlatformId // keep TS happy that function is referenced in file
 
     expect(insert).toHaveBeenCalledWith(accountsTable)
     expect(values).toHaveBeenCalledWith({
@@ -40,22 +26,10 @@ describe('accounts model', () => {
   it('findAccountByPlatformId should query by platform and platform_user_id and return first result or null', async () => {
     const rows = [{ id: 'account-xyz' }]
 
-    const limit = vi.fn(() => Promise.resolve(rows))
-    const where = vi.fn(() => ({
-      limit,
-    }))
-    const from = vi.fn(() => ({
-      where,
-    }))
-    const select = vi.fn(() => ({
-      from,
-    }))
+    const { select, from, where, limit } = createSelectOneMock(rows)
 
-    const fakeDb = {
-      select,
-    }
-
-    setDbInstanceForTests(fakeDb as any)
+    const fakeDb = { select }
+    setDbInstanceForTests(fakeDb)
 
     const result = await findAccountByPlatformId('telegram', 'user-xyz')
     const unwrapped = result.unwrap()
@@ -63,28 +37,17 @@ describe('accounts model', () => {
     expect(select).toHaveBeenCalled()
     expect(from).toHaveBeenCalled()
     expect(where).toHaveBeenCalled()
+    expect(limit).toHaveBeenCalledWith(1)
     expect(unwrapped).toEqual(rows[0])
   })
 
   it('findAccountByUUID should query by id and return first result or null', async () => {
     const rows = [{ id: 'account-abc' }]
 
-    const limit = vi.fn(() => Promise.resolve(rows))
-    const where = vi.fn(() => ({
-      limit,
-    }))
-    const from = vi.fn(() => ({
-      where,
-    }))
-    const select = vi.fn(() => ({
-      from,
-    }))
+    const { select, from, where, limit } = createSelectOneMock(rows)
 
-    const fakeDb = {
-      select,
-    }
-
-    setDbInstanceForTests(fakeDb as any)
+    const fakeDb = { select }
+    setDbInstanceForTests(fakeDb)
 
     const result = await findAccountByUUID('account-abc')
     const unwrapped = result.unwrap()
@@ -92,6 +55,7 @@ describe('accounts model', () => {
     expect(select).toHaveBeenCalled()
     expect(from).toHaveBeenCalled()
     expect(where).toHaveBeenCalled()
+    expect(limit).toHaveBeenCalledWith(1)
     expect(unwrapped).toEqual(rows[0])
   })
 })

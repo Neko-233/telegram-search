@@ -1,6 +1,7 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
 
 import { setDbInstanceForTests } from '../db'
+import { createSelectOneMock } from '../db/fakedb'
 import { chatMessageStatsView } from '../schemas/chat_message_stats'
 import { getChatMessagesStats, getChatMessageStatsByChatId } from './chat-message-stats'
 
@@ -11,19 +12,10 @@ describe('chat-message-stats model', () => {
       { chat_id: '1002', message_count: 5 },
     ]
 
-    const where = vi.fn(() => Promise.resolve(rows))
-    const from = vi.fn(() => ({
-      where,
-    }))
-    const select = vi.fn(() => ({
-      from,
-    }))
+    // Simulate select->from->where->limit chain for all rows
+    const { select, from, where } = createSelectOneMock(rows)
 
-    const fakeDb = {
-      select,
-    }
-
-    setDbInstanceForTests(fakeDb as any)
+    setDbInstanceForTests({ select })
 
     const result = await getChatMessagesStats()
     const unwrapped = result.unwrap()
@@ -39,22 +31,9 @@ describe('chat-message-stats model', () => {
       { chat_id: '1001', message_count: 10 },
     ]
 
-    const limit = vi.fn(() => Promise.resolve(rows))
-    const where = vi.fn(() => ({
-      limit,
-    }))
-    const from = vi.fn(() => ({
-      where,
-    }))
-    const select = vi.fn(() => ({
-      from,
-    }))
+    const { select, from, where, limit } = createSelectOneMock(rows)
 
-    const fakeDb = {
-      select,
-    }
-
-    setDbInstanceForTests(fakeDb as any)
+    setDbInstanceForTests({ select })
 
     const resultOk = await getChatMessageStatsByChatId('1001')
 

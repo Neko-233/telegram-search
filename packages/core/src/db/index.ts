@@ -17,8 +17,8 @@ let dbInstance: CoreDB
  * In production this is called indirectly via initDrizzle.
  * In tests you can inject a mock implementation (for example, drizzle.mock()).
  */
-export function setDbInstanceForTests(db: CoreDB) {
-  dbInstance = db
+export function setDbInstanceForTests(db: unknown) {
+  dbInstance = db as CoreDB
 }
 
 // TODO: options? here should contain dbPath, config.
