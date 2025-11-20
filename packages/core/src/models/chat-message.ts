@@ -210,6 +210,7 @@ export async function fetchMessageContextWithPhotos({ chatId, messageId, before,
 }
 
 export async function retrieveMessages(
+  accountId: string,
   chatId: string | undefined,
   content: {
     text?: string
@@ -226,13 +227,13 @@ export async function retrieveMessages(
   const retrievalMessages: DBRetrievalMessages[] = []
 
   if (content.text) {
-    const relevantMessages = await retrieveJieba(chatId, content.text, pagination, filters)
+    const relevantMessages = await retrieveJieba(accountId, chatId, content.text, pagination, filters)
     logger.withFields({ relevantMessages: relevantMessages.length }).verbose('Retrieved jieba messages')
     retrievalMessages.push(...relevantMessages)
   }
 
   if (content.embedding && content.embedding.length !== 0) {
-    const relevantMessages = await retrieveVector(chatId, content.embedding, pagination, filters)
+    const relevantMessages = await retrieveVector(accountId, chatId, content.embedding, pagination, filters)
     logger.withFields({ relevantMessages: relevantMessages.length }).verbose('Retrieved vector messages')
     retrievalMessages.push(...relevantMessages)
   }

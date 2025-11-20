@@ -6,11 +6,13 @@ import { EmbeddingDimension, useConfig } from '@tg-search/common'
 import { and, desc, eq, gt, sql } from 'drizzle-orm'
 
 import { withDb } from '../../db'
+import { accountJoinedChatsTable } from '../../schemas/account_joined_chats'
 import { chatMessagesTable } from '../../schemas/chat_messages'
 import { joinedChatsTable } from '../../schemas/joined_chats'
 import { getSimilaritySql } from './similarity'
 
 export async function retrieveVector(
+  accountId: string,
   chatId: string | undefined,
   embedding: number[],
   pagination?: CorePagination,
@@ -62,7 +64,14 @@ export async function retrieveVector(
       chat_name: joinedChatsTable.chat_name,
     })
     .from(chatMessagesTable)
-    .leftJoin(joinedChatsTable, eq(chatMessagesTable.in_chat_id, joinedChatsTable.chat_id))
+    .innerJoin(joinedChatsTable, eq(chatMessagesTable.in_chat_id, joinedChatsTable.chat_id))
+    .innerJoin(
+      accountJoinedChatsTable,
+      and(
+        eq(accountJoinedChatsTable.joined_chat_id, joinedChatsTable.id),
+        eq(accountJoinedChatsTable.account_id, accountId),
+      ),
+    )
     .where(and(...whereConditions))
     .orderBy(desc(sql`combined_score`))
     .limit(pagination?.limit || 20),

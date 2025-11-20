@@ -2,7 +2,7 @@
 
 import type { CoreDialog } from '../types/dialog'
 
-import { desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, sql } from 'drizzle-orm'
 
 import { withDb } from '../db'
 import { accountJoinedChatsTable } from '../schemas/account_joined_chats'
@@ -41,6 +41,33 @@ export async function fetchChatsByAccountId(accountId: string) {
     .where(eq(accountJoinedChatsTable.account_id, accountId))
     .orderBy(desc(joinedChatsTable.dialog_date)),
   )
+}
+
+/**
+ * Check whether a given chat (by Telegram chat_id) is accessible for an account.
+ *
+ * This is used by higher-level handlers to enforce that message-level access
+ * never exceeds the dialogs visible to the account.
+ */
+export async function isChatAccessibleByAccount(accountId: string, chatId: string) {
+  return withDb(async (db) => {
+    const rows = await db
+      .select({
+        id: joinedChatsTable.id,
+      })
+      .from(joinedChatsTable)
+      .innerJoin(
+        accountJoinedChatsTable,
+        and(
+          eq(accountJoinedChatsTable.joined_chat_id, joinedChatsTable.id),
+          eq(accountJoinedChatsTable.account_id, accountId),
+        ),
+      )
+      .where(eq(joinedChatsTable.chat_id, chatId))
+      .limit(1)
+
+    return rows.length > 0
+  })
 }
 
 export async function recordChats(chats: CoreDialog[], accountId: string) {

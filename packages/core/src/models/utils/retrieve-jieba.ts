@@ -6,11 +6,13 @@ import { useLogger } from '@guiiai/logg'
 import { and, eq, sql } from 'drizzle-orm'
 
 import { withDb } from '../../db'
+import { accountJoinedChatsTable } from '../../schemas/account_joined_chats'
 import { chatMessagesTable } from '../../schemas/chat_messages'
 import { joinedChatsTable } from '../../schemas/joined_chats'
 import { ensureJieba } from '../../utils/jieba'
 
 export async function retrieveJieba(
+  accountId: string,
   chatId: string | undefined,
   content: string,
   pagination?: CorePagination,
@@ -28,6 +30,7 @@ export async function retrieveJieba(
   }
 
   logger.withFields({
+    accountId,
     chatId,
     content,
     jiebaTokens,
@@ -64,7 +67,14 @@ export async function retrieveJieba(
       chat_name: joinedChatsTable.chat_name,
     })
     .from(chatMessagesTable)
-    .leftJoin(joinedChatsTable, eq(chatMessagesTable.in_chat_id, joinedChatsTable.chat_id))
+    .innerJoin(joinedChatsTable, eq(chatMessagesTable.in_chat_id, joinedChatsTable.chat_id))
+    .innerJoin(
+      accountJoinedChatsTable,
+      and(
+        eq(accountJoinedChatsTable.joined_chat_id, joinedChatsTable.id),
+        eq(accountJoinedChatsTable.account_id, accountId),
+      ),
+    )
     .where(and(...whereConditions))
     .limit(pagination?.limit || 20),
   )).expect('Failed to fetch text relevant messages')

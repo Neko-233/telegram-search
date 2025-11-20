@@ -5,7 +5,7 @@ import type { CoreMessage } from '../types/message'
 
 import { useLogger } from '@guiiai/logg'
 
-import { convertToCoreRetrievalMessages, fetchChatsByAccountId, fetchMessageContextWithPhotos, fetchMessagesWithPhotos, getChatMessagesStats, recordChats, recordMessagesWithMedia, retrieveMessages } from '../models'
+import { convertToCoreRetrievalMessages, fetchChatsByAccountId, fetchMessageContextWithPhotos, fetchMessagesWithPhotos, getChatMessagesStats, isChatAccessibleByAccount, recordChats, recordMessagesWithMedia, retrieveMessages } from '../models'
 import { embedContents } from '../utils/embed'
 
 /**
@@ -21,6 +21,15 @@ export function registerStorageEventHandlers(ctx: CoreContext) {
 
   emitter.on('storage:fetch:messages', async ({ chatId, pagination }) => {
     logger.withFields({ chatId, pagination }).verbose('Fetching messages')
+
+    const accountId = ctx.getCurrentAccountId()
+    const hasAccess = (await isChatAccessibleByAccount(accountId, chatId)).expect('Failed to check chat access')
+
+    if (!hasAccess) {
+      ctx.withError(new Error('Unauthorized chat access'), 'Account does not have access to requested chat messages')
+      return
+    }
+
     const messages = (await fetchMessagesWithPhotos(chatId, pagination)).unwrap()
     emitter.emit('storage:messages', { messages })
   })
@@ -30,6 +39,14 @@ export function registerStorageEventHandlers(ctx: CoreContext) {
     const safeAfter = Math.max(0, after)
 
     logger.withFields({ chatId, messageId, before: safeBefore, after: safeAfter }).verbose('Fetching message context')
+
+    const accountId = ctx.getCurrentAccountId()
+    const hasAccess = (await isChatAccessibleByAccount(accountId, chatId)).expect('Failed to check chat access')
+
+    if (!hasAccess) {
+      ctx.withError(new Error('Unauthorized chat access'), 'Account does not have access to requested message context')
+      return
+    }
 
     const messages = (await fetchMessageContextWithPhotos({ chatId, messageId, before: safeBefore, after: safeAfter })).unwrap()
 
@@ -116,8 +133,19 @@ export function registerStorageEventHandlers(ctx: CoreContext) {
   emitter.on('storage:search:messages', async (params) => {
     logger.withFields({ params }).verbose('Searching messages')
 
+    const accountId = ctx.getCurrentAccountId()
+
     if (params.content.length === 0) {
       return
+    }
+
+    if (params.chatId) {
+      const hasAccess = (await isChatAccessibleByAccount(accountId, params.chatId)).expect('Failed to check chat access')
+
+      if (!hasAccess) {
+        ctx.withError(new Error('Unauthorized chat access'), 'Account does not have access to requested chat messages')
+        return
+      }
     }
 
     // Prepare filters from params
@@ -133,10 +161,10 @@ export function registerStorageEventHandlers(ctx: CoreContext) {
       if (embeddingResult)
         embedding = embeddingResult.embeddings[0]
 
-      dbMessages = (await retrieveMessages(params.chatId, { embedding, text: params.content }, params.pagination, filters)).expect('Failed to retrieve messages')
+      dbMessages = (await retrieveMessages(accountId, params.chatId, { embedding, text: params.content }, params.pagination, filters)).expect('Failed to retrieve messages')
     }
     else {
-      dbMessages = (await retrieveMessages(params.chatId, { text: params.content }, params.pagination, filters)).expect('Failed to retrieve messages')
+      dbMessages = (await retrieveMessages(accountId, params.chatId, { text: params.content }, params.pagination, filters)).expect('Failed to retrieve messages')
     }
 
     logger.withFields({ messages: dbMessages.length }).verbose('Retrieved messages')

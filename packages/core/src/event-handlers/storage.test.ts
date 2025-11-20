@@ -3,7 +3,14 @@ import type { CoreDialog } from '../types/dialog'
 import { describe, expect, it, vi } from 'vitest'
 
 import { createCoreContext } from '../context'
-import { fetchChatsByAccountId, getChatMessagesStats, recordChats } from '../models'
+import {
+  fetchChatsByAccountId,
+  fetchMessagesWithPhotos,
+  getChatMessagesStats,
+  isChatAccessibleByAccount,
+  recordChats,
+  retrieveMessages,
+} from '../models'
 import { registerStorageEventHandlers } from './storage'
 
 // Minimal Result-like helper used in mocks
@@ -16,7 +23,8 @@ function ok<T>(value: T) {
 }
 
 vi.mock('../models', () => {
-  // In tests we only care about dialogs-related functions, other exports can be no-ops
+  // In tests we only care about dialogs- and message-related functions,
+  // other exports can be no-ops
   const fetchChatsByAccountId = vi.fn(async (accountId: string) => {
     const rows = [
       {
@@ -53,18 +61,27 @@ vi.mock('../models', () => {
     }
   })
 
+  const isChatAccessibleByAccount = vi.fn(async () => ok(true))
+  const fetchMessageContextWithPhotos = vi.fn()
+  const fetchMessagesWithPhotos = vi.fn(async () => ok([]))
+  const recordMessagesWithMedia = vi.fn()
+  const retrieveMessages = vi.fn(async () => ok([]))
+
   return {
     // Dialog-related exports
     fetchChatsByAccountId,
     getChatMessagesStats,
     recordChats,
 
+    // Message-related exports used in storage handlers
+    isChatAccessibleByAccount,
+    fetchMessageContextWithPhotos,
+    fetchMessagesWithPhotos,
+    recordMessagesWithMedia,
+    retrieveMessages,
+
     // Other exports referenced by storage.ts but unused in these tests
     convertToCoreRetrievalMessages: vi.fn(),
-    fetchMessageContextWithPhotos: vi.fn(),
-    fetchMessagesWithPhotos: vi.fn(),
-    recordMessagesWithMedia: vi.fn(),
-    retrieveMessages: vi.fn(),
   }
 })
 
@@ -118,5 +135,69 @@ describe('storage event handlers - dialogs with accounts', () => {
 
     expect(recordChats).toHaveBeenCalledTimes(1)
     expect(recordChats).toHaveBeenCalledWith(dialogs, ACCOUNT_ID)
+  })
+})
+
+describe('storage event handlers - message access control', () => {
+  it('storage:fetch:messages should reject when account has no access to chat', async () => {
+    const ctx = createCoreContext()
+    registerStorageEventHandlers(ctx)
+
+    const ACCOUNT_ID = 'account-no-access'
+    const CHAT_ID = '1001'
+
+    ctx.setCurrentAccountId(ACCOUNT_ID)
+
+    // For this test, deny access
+    ;(isChatAccessibleByAccount as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(ok(false))
+
+    const errorPromise = new Promise<Error>((resolve) => {
+      ctx.emitter.on('core:error', ({ error }) => {
+        resolve(error as Error)
+      })
+    })
+
+    ctx.emitter.emit('storage:fetch:messages', {
+      chatId: CHAT_ID,
+      pagination: { limit: 20, offset: 0 },
+    })
+
+    const error = await errorPromise
+
+    expect(error).toBeInstanceOf(Error)
+    expect(isChatAccessibleByAccount).toHaveBeenCalledWith(ACCOUNT_ID, CHAT_ID)
+    expect(fetchMessagesWithPhotos).not.toHaveBeenCalled()
+  })
+
+  it('storage:search:messages should reject when account has no access to specified chatId', async () => {
+    const ctx = createCoreContext()
+    registerStorageEventHandlers(ctx)
+
+    const ACCOUNT_ID = 'account-no-access'
+    const CHAT_ID = '2002'
+
+    ctx.setCurrentAccountId(ACCOUNT_ID)
+
+    // For this test, deny access for this chat
+    ;(isChatAccessibleByAccount as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(ok(false))
+
+    const errorPromise = new Promise<Error>((resolve) => {
+      ctx.emitter.on('core:error', ({ error }) => {
+        resolve(error as Error)
+      })
+    })
+
+    ctx.emitter.emit('storage:search:messages', {
+      chatId: CHAT_ID,
+      content: 'test search',
+      useVector: false,
+      pagination: { limit: 20, offset: 0 },
+    })
+
+    const error = await errorPromise
+
+    expect(error).toBeInstanceOf(Error)
+    expect(isChatAccessibleByAccount).toHaveBeenCalledWith(ACCOUNT_ID, CHAT_ID)
+    expect(retrieveMessages).not.toHaveBeenCalled()
   })
 })
