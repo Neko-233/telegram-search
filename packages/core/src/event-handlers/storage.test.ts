@@ -25,7 +25,7 @@ function ok<T>(value: T) {
 vi.mock('../models', () => {
   // In tests we only care about dialogs- and message-related functions,
   // other exports can be no-ops
-  const fetchChatsByAccountId = vi.fn(async (accountId: string) => {
+  const fetchChatsByAccountId = vi.fn(async (_accountId: string) => {
     const rows = [
       {
         id: 'joined-chat-1',

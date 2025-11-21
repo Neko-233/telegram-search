@@ -78,24 +78,20 @@ describe('chats model with accounts', () => {
       { id: 'joined-chat-1' },
     ]
 
-    const linkValues = vi.fn(() => ({
-      onConflictDoNothing: onConflictDoNothingLinks,
-    }))
     const onConflictDoNothingLinks = vi.fn(() => undefined)
-
-    const linkInsert = vi.fn(() => ({
-      values: linkValues,
+    const linkValues = vi.fn(() => ({
       onConflictDoNothing: onConflictDoNothingLinks,
     }))
 
     const returning = vi.fn(async () => insertedRows)
+    const onConflictDoUpdate = vi.fn(() => ({
+      returning,
+    }))
     const chatsValues = vi.fn(() => ({
       onConflictDoUpdate,
       returning,
     }))
-    const onConflictDoUpdate = vi.fn(() => ({
-      returning,
-    }))
+
     const chatsInsert = vi.fn((table: unknown) => {
       if (table === joinedChatsTable) {
         return {
