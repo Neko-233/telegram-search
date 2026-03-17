@@ -7,15 +7,21 @@ import { useI18n } from 'vue-i18n'
 
 import MessageBubble from './messages/MessageBubble.vue'
 
+import { estimatePlaceholderMessageLogicalHeight } from '../composables/use-chat-layout'
+
 interface Props {
   messages: CoreMessage[]
   onScrollToTop?: () => void
   onScrollToBottom?: () => void
   autoScrollToBottom?: boolean
+  showLoadingOlder?: boolean
+  placeholderMessageUuids?: string[]
 }
 
 const props = withDefaults(defineProps<Props>(), {
   autoScrollToBottom: true,
+  showLoadingOlder: false,
+  placeholderMessageUuids: () => [],
 })
 
 const emit = defineEmits<{
@@ -26,10 +32,8 @@ const { t } = useI18n()
 
 const vListRef = ref<InstanceType<typeof VList>>()
 
-// Track scroll state
-const isScrolling = ref(false)
 const scrollTop = ref(0)
-let scrollTimer: ReturnType<typeof setTimeout> | null = null
+const placeholderMessageUuidSet = computed(() => new Set(props.placeholderMessageUuids))
 
 // Container height calculation
 // const containerHeight = computed(() => Math.max(windowHeight.value - 200, 400))
@@ -42,6 +46,24 @@ let lastMessageCount = 0
 type MessageListItem
   = | { type: 'separator', id: string, label: string }
     | { type: 'message', id: string, message: CoreMessage, messageIndex: number }
+
+interface LayoutAnchor {
+  itemKey: string
+  itemType: 'separator' | 'message'
+  messageUuid: string
+  messageId: string
+  pageIndexHint: number | null
+  anchorIndex: number
+  offsetWithinItem: number
+  itemOffset: number
+  scrollTop: number
+}
+
+interface ScrollMetrics {
+  scrollTop: number
+  scrollSize: number
+  viewportSize: number
+}
 
 function toDayKey(timestamp: number) {
   const date = new Date(timestamp * 1000)
@@ -77,7 +99,7 @@ const renderItems = computed<MessageListItem[]>(() => {
     if (dayKey !== lastDayKey) {
       items.push({
         type: 'separator',
-        id: `separator:${dayKey}`,
+        id: `separator:${dayKey}:${message.uuid}`,
         label: formatDaySeparator(message.platformTimestamp),
       })
       lastDayKey = dayKey
@@ -100,6 +122,25 @@ function getPreviousMessage(index: number) {
 
 function getNextMessage(index: number) {
   return index < props.messages.length - 1 ? props.messages[index + 1] : undefined
+}
+
+function isPlaceholderMessage(message: CoreMessage) {
+  return placeholderMessageUuidSet.value.has(message.uuid)
+}
+
+function estimatePlaceholderHeight(message: CoreMessage, messageIndex: number) {
+  const previousMessage = getPreviousMessage(messageIndex)
+  const isGroupedWithPrevious = !!previousMessage
+    && previousMessage.fromId === message.fromId
+    && Math.abs(previousMessage.platformTimestamp - message.platformTimestamp) <= 5 * 60
+
+  return estimatePlaceholderMessageLogicalHeight(message, isGroupedWithPrevious)
+}
+
+function placeholderToneClass(message: CoreMessage) {
+  return message.fromId === message.chatId
+    ? 'bg-primary/10 border-primary/10'
+    : 'bg-muted/80 border-border/60'
 }
 
 // Watch for message changes to maintain scroll position
@@ -126,17 +167,6 @@ watch(() => props.messages, async (newMessages, oldMessages) => {
 // Handle scroll events and emit status
 function onScroll(offset: number) {
   scrollTop.value = offset
-  isScrolling.value = true
-
-  // Clear existing timer
-  if (scrollTimer) {
-    clearTimeout(scrollTimer)
-  }
-
-  // Set scrolling to false after scroll stops
-  scrollTimer = setTimeout(() => {
-    isScrolling.value = false
-  }, 150)
 
   if (!vListRef.value)
     return
@@ -187,6 +217,116 @@ async function scrollToMessage(messageId: string | number) {
   vListRef.value.scrollToIndex(targetIndex, { align: 'center' })
 }
 
+function captureLayoutAnchor(): LayoutAnchor | null {
+  if (!vListRef.value || renderItems.value.length === 0) {
+    return null
+  }
+
+  let firstVisibleIndex = -1
+
+  for (let index = 0; index < renderItems.value.length; index++) {
+    const itemOffset = vListRef.value.getItemOffset(index)
+    const itemSize = vListRef.value.getItemSize(index)
+    const itemBottom = itemOffset + itemSize
+
+    if (itemBottom > scrollTop.value) {
+      firstVisibleIndex = index
+      break
+    }
+  }
+
+  const fallbackIndex = firstVisibleIndex === -1
+    ? renderItems.value.length - 1
+    : firstVisibleIndex
+  const fallbackItem = renderItems.value[fallbackIndex]
+  if (!fallbackItem) {
+    return null
+  }
+
+  let anchorIndex = fallbackIndex
+  let anchorItem = fallbackItem
+
+  // NOTICE: Date separators are not stable restore anchors across prepends.
+  // We promote the anchor to the next visible message so older-page insertion
+  // won't change the anchor identity for the same day.
+  if (anchorItem.type === 'separator') {
+    const nextMessageIndex = renderItems.value.findIndex((item, index) => {
+      return index > anchorIndex && item.type === 'message'
+    })
+    if (nextMessageIndex !== -1) {
+      anchorIndex = nextMessageIndex
+      anchorItem = renderItems.value[nextMessageIndex]
+    }
+  }
+
+  const itemOffset = vListRef.value.getItemOffset(anchorIndex)
+
+  return {
+    itemKey: anchorItem.id,
+    itemType: anchorItem.type,
+    messageUuid: anchorItem.type === 'message' ? anchorItem.message.uuid : '',
+    messageId: anchorItem.type === 'message' ? anchorItem.message.platformMessageId : '',
+    pageIndexHint: null,
+    anchorIndex,
+    offsetWithinItem: Math.max(0, scrollTop.value - itemOffset),
+    itemOffset,
+    scrollTop: scrollTop.value,
+  }
+}
+
+async function restoreLayoutAnchor(anchor: Pick<LayoutAnchor, 'itemKey' | 'itemType' | 'messageUuid' | 'messageId' | 'offsetWithinItem' | 'itemOffset' | 'scrollTop'>) {
+  await nextTick()
+  if (!vListRef.value) {
+    return null
+  }
+
+  const anchorIndex = renderItems.value.findIndex((item) => {
+    if (item.id === anchor.itemKey) {
+      return true
+    }
+
+    return item.type === 'message'
+      && anchor.itemType === 'message'
+      && item.message.uuid === anchor.messageUuid
+  })
+  if (anchorIndex === -1) {
+    return null
+  }
+
+  const nextItemOffset = vListRef.value.getItemOffset(anchorIndex)
+  const targetOffset = anchor.scrollTop + (nextItemOffset - anchor.itemOffset)
+  vListRef.value.scrollTo(targetOffset)
+
+  return {
+    anchorIndex,
+    previousItemOffset: anchor.itemOffset,
+    nextItemOffset,
+    delta: nextItemOffset - anchor.itemOffset,
+    targetOffset,
+  }
+}
+
+function getScrollMetrics(): ScrollMetrics | null {
+  if (!vListRef.value) {
+    return null
+  }
+
+  return {
+    scrollTop: scrollTop.value,
+    scrollSize: vListRef.value.scrollSize,
+    viewportSize: vListRef.value.viewportSize,
+  }
+}
+
+async function scrollToOffset(offset: number) {
+  await nextTick()
+  if (!vListRef.value) {
+    return
+  }
+
+  vListRef.value.scrollTo(offset)
+}
+
 // Get scroll offset for maintaining position
 function getScrollOffset(anchorId: string | number): { anchorIndex: number, offset: number } | null {
   const anchorIndex = renderItems.value.findIndex(item => item.type === 'message' && item.message.uuid === anchorId)
@@ -218,6 +358,10 @@ defineExpose({
   getScrollOffset,
   restoreScrollPosition,
   scrollToMessage,
+  captureLayoutAnchor,
+  restoreLayoutAnchor,
+  getScrollMetrics,
+  scrollToOffset,
 })
 </script>
 
@@ -230,7 +374,6 @@ defineExpose({
       :item-size="72"
       shift
       @scroll="onScroll"
-      @scroll-end="() => (isScrolling = false)"
     >
       <template #default="{ item }">
         <div v-if="item.type === 'separator'" :key="item.id" class="w-full py-3">
@@ -242,7 +385,24 @@ defineExpose({
         </div>
 
         <div v-else :key="item.id" class="w-full">
+          <div
+            v-if="isPlaceholderMessage(item.message)"
+            class="w-full px-4 md:px-6"
+            :style="{ height: `${estimatePlaceholderHeight(item.message, item.messageIndex)}px` }"
+          >
+            <div class="mx-auto h-full max-w-4xl flex items-center">
+              <div
+                class="border rounded-[1.35rem] shadow-sm transition-colors"
+                :class="placeholderToneClass(item.message)"
+                :style="{
+                  width: item.message.fromId === item.message.chatId ? '68%' : '74%',
+                  height: `${Math.max(72, estimatePlaceholderHeight(item.message, item.messageIndex) - 20)}px`,
+                }"
+              />
+            </div>
+          </div>
           <MessageBubble
+            v-else
             :message="item.message"
             :previous-message="getPreviousMessage(item.messageIndex)"
             :next-message="getNextMessage(item.messageIndex)"
@@ -253,7 +413,7 @@ defineExpose({
 
     <!-- Loading indicators -->
     <div
-      v-if="isScrolling"
+      v-if="props.showLoadingOlder"
       class="absolute right-2 top-4 z-20 flex items-center gap-1.5 border rounded-full bg-card/90 px-3 py-1.5 text-xs text-muted-foreground font-medium leading-none shadow-lg backdrop-blur-sm -translate-x-1/2"
     >
       <span class="i-lucide-loader-2 inline-block h-3 w-3 animate-spin" />
@@ -270,7 +430,7 @@ defineExpose({
       leave-to-class="opacity-0 scale-90 translate-y-2"
     >
       <button
-        v-if="!isAtBottom && !isScrolling"
+        v-if="!isAtBottom && !props.showLoadingOlder"
         class="absolute bottom-6 right-6 h-12 w-12 flex items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition-all hover:scale-110 hover:shadow-2xl"
         @click="scrollToBottom"
       >

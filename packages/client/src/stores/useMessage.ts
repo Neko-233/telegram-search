@@ -352,6 +352,26 @@ export const useMessageStore = defineStore('message', () => {
     }
   }
 
+  function ensureWindowCapacity(limit: number) {
+    const desiredSize = Math.max(limit, 50)
+
+    if (!messageWindow.value) {
+      messageWindow.value = new MessageWindow(desiredSize)
+      return
+    }
+
+    if (messageWindow.value.maxSize >= desiredSize) {
+      return
+    }
+
+    const nextWindow = new MessageWindow(desiredSize)
+    nextWindow.addBatch(
+      messageWindow.value.getSortedIds().map(id => messageWindow.value!.get(id)!).filter(Boolean),
+      'initial',
+    )
+    messageWindow.value = nextWindow
+  }
+
   async function loadMessageContext(
     chatId: string,
     messageId: string,
@@ -482,12 +502,16 @@ export const useMessageStore = defineStore('message', () => {
           break
       }
 
-      Promise.race([
-        bridge.waitForEvent(CoreEventType.MessageData),
-        bridge.waitForEvent(CoreEventType.StorageMessages),
+      const matchesChatMessages = (data: { messages: CoreMessage[] }) =>
+        data.messages.length > 0 && data.messages.every(message => message.chatId === chatId)
+
+      return Promise.race([
+        bridge.waitForEvent(CoreEventType.MessageData, matchesChatMessages),
+        bridge.waitForEvent(CoreEventType.StorageMessages, matchesChatMessages),
         createContextWithTimeout(10000),
       ]).catch(() => {
         logger.warn('Message fetch timed out or failed')
+        return { messages: [] as CoreMessage[] }
       }).finally(() => {
         isLoading.value = false
       })
@@ -507,6 +531,7 @@ export const useMessageStore = defineStore('message', () => {
     messageWindow: computed(() => messageWindow.value!),
 
     replaceMessages,
+    ensureWindowCapacity,
     reset,
     pushMessages,
     queueRealtimeEditHint,
